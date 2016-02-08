@@ -45,10 +45,14 @@ var sprintfOrg = window.sprintf;
 window.sprintf = function() {
   for (var arg in arguments) {
     if (typeof arguments[arg] == "undefined")
-      return "<UNDEF>";
+      arguments[arg] = "<UNDEF>";
   }
 
-  return sprintfOrg.apply(this, arguments);
+  try {
+    return sprintfOrg.apply(this, arguments);
+  } catch( Err ) {
+    return 'sprintf Error';
+  }
 }
 
 /*
@@ -68,7 +72,7 @@ $.extend({
   },
   getUrlVar: function(name){
     return $.getUrlVars()[name];
-  },
+  }
   /**
    * Include files on this place. This will be replaced by the content of the
    * script during packaging

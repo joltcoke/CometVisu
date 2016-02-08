@@ -25,6 +25,7 @@ define( ['_common'], function( design ) {
   {
     if (!$main.data('disableSliderTransform')) {
       if (!isNaN(value)) {
+        value = parseFloat(value); // force any (string) value to float
         var sliderMax = $(handle).parent().slider("option","max")+($(handle).parent().slider("option","min")*-1);
         var percent = Math.round((100/sliderMax)*(value+($(handle).parent().slider("option","min")*-1)));
         //console.log("Value: "+value+", Max/Min: "+sliderMax+", %: "+percent+" => "+percent);
@@ -64,7 +65,7 @@ design.basicdesign.addCreator('slide', {
       'step'           : step,
       'send_on_finish' : send_on_finish,
       'valueInternal'  : true,
-      'inAction'       : false,
+      'inAction'       : false
     });
     
     // check provided address-items for at least one address which has write-access
@@ -180,7 +181,7 @@ design.basicdesign.addCreator('slide', {
       }
     }
     transformSlider(ui.value,ui.handle);
-  },
+  }
   
 });
 
