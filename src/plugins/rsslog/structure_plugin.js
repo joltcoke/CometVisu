@@ -18,7 +18,7 @@
 define( ['structure_custom', 'css!plugins/rsslog/rsslog' ], function( VisuDesign_Custom ) {
   "use strict";
 
-VisuDesign_Custom.prototype.addCreator("rsslog", {
+  VisuDesign_Custom.prototype.addCreator("rsslog", {
   create: function( element, path, flavour, type ) { 
     var 
       $el = $(element),
@@ -54,17 +54,12 @@ VisuDesign_Custom.prototype.addCreator("rsslog", {
       limit:      $el.attr("limit") ? +$el.attr("limit") : 0,
       timeformat: $el.attr("timeformat"),
       itemoffset: 0,
-      itemack:    $el.attr("itemack") || "modify" // allowed: modify, display, disable
+      itemack:    $el.attr("itemack") || "modify", // allowed: modify, display, disable
+      future:     $el.attr("future"),
     });
     
-    templateEngine.bindActionForLoadingFinished(function() {
+    templateEngine.callbacks[ templateEngine.getPageIdForWidgetId( element, path ) ].beforePageChange.push( function(){
       refreshRSSlog( data );
-    });
-    $(window).bind('scrolltopage', function( event, page_id ){
-      var page = templateEngine.getParentPageFromPath(path);
-      if (page != null && page_id == page.attr("id")) {
-        refreshRSSlog( data );
-      }
     });
 
     return ret_val;
@@ -110,7 +105,7 @@ VisuDesign_Custom.prototype.addCreator("rsslog", {
   }
 });
 
-function refreshRSSlog( data, isBig ) {
+  function refreshRSSlog( data, isBig ) {
     var src = data.src;
     var filter = data.filter;
     if (filter) {
@@ -127,6 +122,14 @@ function refreshRSSlog( data, isBig ) {
         src += '&limit=' + limit;
       } else {
         src += '?limit=' + limit;
+      }
+    }
+    var future = data.future;
+    if (future) {
+      if (src.match(/\?/)) {
+        src += '&future=' + future;
+      } else {
+        src += '?future=' + future;
       }
     }
     
@@ -146,9 +149,9 @@ function refreshRSSlog( data, isBig ) {
     }
     
     return false;
-}
+  }
 
-(function($){
+  (function($){
   jQuery.fn.extend({
     rssfeedlocal: function(options) {
   
@@ -175,24 +178,24 @@ function refreshRSSlog( data, isBig ) {
           return; // avoid the request
         }
         
-	if (!o.src.match(/rsslog\.php/) && !o.src.match(/rsslog_mysql\.php/)) {
-	  extsource = true; // for later changes to tell if internal or external source being used
-	  var wrapper = "plugins/rsslog/rsslog_external.php?url="
+        if (!o.src.match(/rsslog\.php/) && !o.src.match(/rsslog_mysql\.php/)) {
+          extsource = true; // for later changes to tell if internal or external source being used
+          var wrapper = "plugins/rsslog/rsslog_external.php?url="
           o.src = wrapper.concat(o.src);
-	} else {
-	  if (o.src.match(/\?/)) {
+        } else {
+          if (o.src.match(/\?/)) {
             o.src += '&j';
           } else {
             o.src += '?j';
           }
-	}
+        }
 
         jQuery.ajax({
           url: o.src,
           type: 'GET',
           dataType: o.dataType,
           error: function (xhr, status, e) {
-          console.log('C: #%s, Error: %s, Feed: %s', $(c).attr('id'), e, o.src);
+            console.log('C: #%s, Error: %s, Feed: %s', $(c).attr('id'), e, o.src);
           },
           success: function(result){
             //console.log('C: #%s, Success, Feed: %s', $(c).attr('id'), o.src);
@@ -212,7 +215,7 @@ function refreshRSSlog( data, isBig ) {
 
             var items = result.responseData.feed.entries;
             var itemnum = items.length;
-	    //console.log('C: #%s, %i element(s) found, %i displayrow(s) available', $(c).attr('id'), itemnum, displayrows);
+            //console.log('C: #%s, %i element(s) found, %i displayrow(s) available', $(c).attr('id'), itemnum, displayrows);
                           
             var itemoffset = 0; // correct if mode='last' or itemnum<=displayrows
                           
@@ -236,6 +239,7 @@ function refreshRSSlog( data, isBig ) {
             var separatordate = new Date().strftime('%d');
             var separatoradd = false;
             var separatorprevday = false;
+            var isFuture = false;
             
             for (var i=itemoffset; i<last; i++) {  
               //console.log('C: #%s, processing item: %i of %i', $(c).attr('id'), i, itemnum);
@@ -254,6 +258,7 @@ function refreshRSSlog( data, isBig ) {
                 var thisday = entryDate.strftime('%d');
                 separatoradd = ((separatordate > 0) && (separatordate != thisday));
                 separatordate = thisday;  
+                isFuture = (entryDate > new Date() );
               }
               else {
                 itemHtml = itemHtml.replace(/{date}/, '');
@@ -266,12 +271,20 @@ function refreshRSSlog( data, isBig ) {
                 var $span = $row.find('.mappedValue');
                 templateEngine.design.defaultValue2DOM( mappedValue, function(e){ $span.append(e); } );
               }
-              if (separatoradd) { 
+              if (separatoradd & idx !== 0) { 
                 $row.addClass('rsslog_separator');
                 separatorprevday = true; 
               }
+              else {
+                separatorprevday = false;
+              }
+        
               if (separatorprevday == true) { 
                 $row.addClass(' rsslog_prevday'); 
+              }
+        
+              if (isFuture) {
+                $row.addClass((row == 'rsslogodd') ? 'rsslog_futureeven' : 'rsslog_futureodd');
               }
 
               $row.data({ 'id': item.id, 'mapping': item.mapping });
@@ -287,20 +300,20 @@ function refreshRSSlog( data, isBig ) {
 
               if( o.itemack === 'modify' ) {
                 $row.bind("click", function() {
-                   var item = $(this);
-                   var id = item.data('id');
-                   var mapping = item.data('mapping');
-                   item.toggleClass("rsslog_ack");
-                   var state = +item.hasClass("rsslog_ack"); // the new state is the same as hasClass
-                   if( mapping !== '' )
-                   {
-                     var mappedValue = templateEngine.map( state, mapping );
-                     var $span = item.find('.mappedValue');
-                     $span.empty();
-                     templateEngine.design.defaultValue2DOM( mappedValue, function(e){ $span.append(e); } );
-                   }
-                   var url = o.src.split('?')[0] + '?u=' + id + '&state=' + state;
-                   jQuery.ajax({
+                  var item = $(this);
+                  var id = item.data('id');
+                  var mapping = item.data('mapping');
+                  item.toggleClass("rsslog_ack");
+                  var state = +item.hasClass("rsslog_ack"); // the new state is the same as hasClass
+                  if( mapping !== '' )
+                  {
+                    var mappedValue = templateEngine.map( state, mapping );
+                    var $span = item.find('.mappedValue');
+                    $span.empty();
+                    templateEngine.design.defaultValue2DOM( mappedValue, function(e){ $span.append(e); } );
+                  }
+                  var url = o.src.split('?')[0] + '?u=' + id + '&state=' + state;
+                  jQuery.ajax({
                      url: url,
                      type: 'GET',             
                      error: function (xhr, status, e) {
