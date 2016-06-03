@@ -172,7 +172,7 @@ body br
 .widget .pagejump img.icon, .widget .pagejump canvas.icon { margin-top: -0; }
 .widget .actor img.icon, .widget .actor canvas.icon { margin-bottom: -0.6em; }
 .widget .switchPressed img.icon, .widget .switchPressed canvas.icon, .widget .switchUnpressed img.icon, .widget .switchUnpressed canvas.icon { margin-top: -0.4em; margin-bottom: -0.6em;}
-.widget_container > .pagejump > .label, .widget_container > .refresh > .label {
+.navbar .widget_container > .pagejump > .label, .navbar .widget_container > .refresh > .label {
 	width: auto;
 	display: inline;
 	padding-left: 0;
@@ -331,6 +331,7 @@ body br
 	width: auto;
 	text-align: left;
 	margin-left: 0.3em;
+    line-height: 2em;
 }
 
 .group.widget {
@@ -728,6 +729,7 @@ background-color: #000;
 	font-size: 0.7em;
 	float: left;
 	margin: 0 auto;
+    padding: 0;
 }
 
 #navbarTop .navbar .pagejump .actor, 
@@ -858,7 +860,7 @@ background-color: #000;
 {
   border: #000000 1px solid;
 }
-.flavour_black .ui-slider .ui-slider-range { 
+.flavour_black:not(.group) .ui-slider .ui-slider-range {
 	background-color: #000000;
 }
 .flavour_black.group > div > h2 {
@@ -881,7 +883,7 @@ background-image: -o-linear-gradient(top , #000000 , #333 );
 {
   border: #ffffff 1px solid;
 }
-.flavour_white .ui-slider .ui-slider-range { 
+.flavour_white:not(.group) .ui-slider .ui-slider-range {
 	background-color: #ffffff;
 }
 .flavour_white.group > div > h2 {
@@ -904,7 +906,7 @@ background-image: -o-linear-gradient(top , #ffffff , #333 );
 {
   border: #00ddff 1px solid;
 }
-.flavour_antimony .ui-slider .ui-slider-range { 
+.flavour_antimony:not(.group) .ui-slider .ui-slider-range {
 	background-color: #00ddff;
 }
 .flavour_antimony.group > div > h2 {
@@ -927,7 +929,7 @@ background-image: -o-linear-gradient(top , #00ddff , #333 );
 {
   border: #00ff11 1px solid;
 }
-.flavour_boron .ui-slider .ui-slider-range { 
+.flavour_boron:not(.group) .ui-slider .ui-slider-range {
 	background-color: #00ff11;
 }
 .flavour_boron.group > div > h2 {
@@ -950,7 +952,7 @@ background-image: -o-linear-gradient(top , #00ff11 , #333 );
 {
   border: #ff0000 1px solid;
 }
- .flavour_lithium .ui-slider .ui-slider-range { 
+ .flavour_lithium:not(.group) .ui-slider .ui-slider-range {
 	background-color: #ff0000;
 } 
 .flavour_lithium.group > div > h2 {
@@ -973,7 +975,7 @@ background-image: -o-linear-gradient(top , #ff0000 , #333 );
 {
   border: #d00055 1px solid;
 }
-.flavour_potassium .ui-slider .ui-slider-range { 
+.flavour_potassium:not(.group) .ui-slider .ui-slider-range {
 	background-color: #d00055;
 }
 .flavour_potassium.group > div > h2 {
@@ -1003,11 +1005,11 @@ background-image: -webkit-linear-gradient(top , #ff8000 , #333 );
 background-image: -ms-linear-gradient(top , #ff8000 , #333 );
 background-image: -o-linear-gradient(top , #ff8000 , #333 );
 }
-.flavour_sodium .ui-slider .ui-slider-range { 
+.flavour_sodium:not(.group) .ui-slider .ui-slider-range {
 	background-color: #ff8000;
 }
 /* infowidget in pagejumps */
-.navbar .pagejump .info {
+.navbar .infoaction.pagejump .widget_container.widgetinfo .widget.info {
 	font-size: 0.8em;
 	min-width: 20px;
   	border-radius: 20px;
@@ -1051,13 +1053,27 @@ background-image: -o-linear-gradient(top , #ff8000 , #333 );
 
 /* infoaction plugin */
 .infoaction { padding: 1px 0 0 0; }
+.navbar .infoaction { padding: 0.3em; }
 .infoaction > .label { padding: 0.3em; }
-.infoaction .widget_container.widgetaction .widget { padding-left:0; }
+.infoaction .widget_container.widgetaction .widget { padding-left:0; border: none; }
 .infoaction .widget_container.widgetinfo .widget {
-	background-color: #666 !important;
-	color: #999 !important;
+	background-color: #666;
+	color: #999;
 }
 .infoaction .widget_container.widgetinfo .widget .actor {
 	line-height: normal;
 	text-shadow: none;
+    text-align: center;
+}
+
+.infoaction .widgetinfo .widget {
+    font-size: 0.8em;
+    min-width: 30px;
+    border-radius: 0 0 0 30px;
+    background-color: #FFFFFF;
+    background-image: none;
+    color: black;
+    height: 30px;
+    padding: 0;
+    min-height: 0;
 }
