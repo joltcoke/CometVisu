@@ -17,23 +17,12 @@
 
 define( ['transform_default'], function( Transform ) {
   "use strict";
-  
-  /**
-   * Enforce that value stays within range
-   * When value is not a valid number, the min value is returned
-   */
-  function clip( min, value, max )
-  {
-    value = +value; // enforce number
-    return value > min ? (value > max ? max : value) : min;
-  }
-  
-  /**
-   * This class defines the default transforms:
-   *   encode: transform JavaScript to bus value
-   *   decode: transform bus to JavaScript value
-   */
-  Transform.addTransform( 'DPT', {
+/**
+ * This class defines the default transforms:
+ *   encode: transform JavaScript to bus value
+ *   decode: transform bus to JavaScript value
+ */
+Transform.addTransform( 'DPT', {
   '1.001': {
     name  : 'DPT_Switch',
     encode: function( phy ){
@@ -119,7 +108,7 @@ define( ['transform_default'], function( Transform ) {
       max: 255.0
     },
     encode: function( phy ){
-      var val = parseInt( clip( 0, phy, 255 ) ).toString( 16 );
+      var val = parseInt( phy ).toString( 16 );
       return (val.length == 1 ? '800' : '80') + val;
     },
     decode: function( hex ){
@@ -139,7 +128,6 @@ define( ['transform_default'], function( Transform ) {
   '6.001' : {
     name  : 'DPT_Percent_V8',
     encode: function( phy ){
-      phy = parseInt( clip( -128, phy, 127) );
       var val = phy < 0 ? phy + 256 : phy;
       val = val.toString( 16 );
       return (val.length == 1 ? '800' : '80') + val;
@@ -335,10 +323,10 @@ define( ['transform_default'], function( Transform ) {
       var val="";        
       var chars;
       for (var i=0;i<28;i=i+2) {
-        chars=parseInt(hex.substr(i,2),16);
-        if (chars>0) {
-          val+=String.fromCharCode(chars);
-        }
+          chars=parseInt(hex.substr(i,2),16);
+          if (chars>0) {
+            val+=String.fromCharCode(chars);
+          }
       }
       return val;
     }
@@ -437,10 +425,10 @@ define( ['transform_default'], function( Transform ) {
       var val="";        
       var chars;
       for (var i=0;i<hex.length;i=i+2) {
-        chars=parseInt(hex.substr(i,2),16);
-        if (chars>0) {
-          val+=String.fromCharCode(chars);
-        }
+          chars=parseInt(hex.substr(i,2),16);
+          if (chars>0) {
+            val+=String.fromCharCode(chars);
+          }
       }
       return val;
     }
@@ -466,33 +454,33 @@ define( ['transform_default'], function( Transform ) {
   'temp dummy' : {link:'1.001'}
 } );
 
-  //////
-  // To be deleted later: a test function to check if the coding is consistent
-  function TEST( DPT, Bytes )
+//////
+// To be deleted later: a test function to check if the coding is consistent
+function TEST( DPT, Bytes )
+{
+  var maxErr = 5;
+  DPT = 'DPT:' + DPT;
+  for( i = 0; i < Math.pow(2,8*Bytes); i++ )
   {
-    var maxErr = 5;
-    DPT = 'DPT:' + DPT;
-    for( i = 0; i < Math.pow(2,8*Bytes); i++ )
+    var v = i.toString( 16 );
+    v = new Array(2*Bytes - v.length + 1).join('0') + v;
+    var test = Transform[DPT].encode(
+      Transform[DPT].decode(v)
+    );
+    //console.log(i,v,test);
+    if( v != test )
     {
-      var v = i.toString( 16 );
-      v = new Array(2*Bytes - v.length + 1).join('0') + v;
-      var test = Transform[DPT].encode(
-        Transform[DPT].decode(v)
+      var v2 = Transform[DPT].decode(v);
+      var test2 = Transform[DPT].decode(
+        Transform[DPT].encode(v2)
       );
-      //console.log(i,v,test);
-      if( v != test )
+      if( v2 != test2 )
       {
-        var v2 = Transform[DPT].decode(v);
-        var test2 = Transform[DPT].decode(
-          Transform[DPT].encode(v2)
-        );
-        if( v2 != test2 )
-        {
-          console.log( i, v, test, Transform[DPT].decode(v), v2, test2, maxErr );
-          if( (--maxErr) < 0 ) return maxErr;
-        }
+        console.log( i, v, test, Transform[DPT].decode(v), v2, test2, maxErr );
+        if( (--maxErr) < 0 ) return maxErr;
       }
     }
   }
+}
 
 }); // end define

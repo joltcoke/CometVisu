@@ -17,12 +17,12 @@
 
 define(['jquery'], function($) {
   "use strict";
-  /**
-   * This class defines the default transforms:
-   *   encode: transform JavaScript to bus value
-   *   decode: transform bus to JavaScript value
-   */
-  window.Transform = {
+/**
+ * This class defines the default transforms:
+ *   encode: transform JavaScript to bus value
+ *   decode: transform bus to JavaScript value
+ */
+window.Transform = {
   'raw': {
     name  : 'Only the RAW value',
     encode: function( i ){
@@ -52,33 +52,33 @@ define(['jquery'], function($) {
   }
 }
 
-  /****************************************************************************
-   * All functions below are only in this, i.e. the default, file.
-   * All further transforms will only have the above data structure.
-   ***************************************************************************/
-   
-  function addTransform( prefix, transforms )
+/****************************************************************************
+ * All functions below are only in this, i.e. the default, file.
+ * All further transforms will only have the above data structure.
+ ***************************************************************************/
+
+function addTransform( prefix, transforms )
+{
+  for( var trans in transforms )
   {
-    for( var trans in transforms )
+    if( transforms[trans].link )
     {
-      if( transforms[trans].link )
-      {
-        Transform[ prefix + ':' + trans ] = $.extend( {}, transforms[ transforms[trans].link ], transforms[trans] );
-      } else {
-        Transform[ prefix + ':' + trans ] = transforms[ trans ];
-      }
+      Transform[ prefix + ':' + trans ] = $.extend( {}, transforms[ transforms[trans].link ], transforms[trans] );
+    } else {
+      Transform[ prefix + ':' + trans ] = transforms[ trans ];
     }
   }
+}
 
-  /**
-   * Prepend zeros to the string s till the result has the length l.
-   */
-  function zeroFillString( s, l )
-  {
-    if( s.length >= l ) return s;
+/**
+ * Prepend zeros to the string s till the result has the length l.
+ */
+function zeroFillString( s, l )
+{
+  if( s.length >= l ) return s;
   
-    return new Array(1 + l - s.length).join('0') + s;
-  }
+  return new Array(1 + l - s.length).join('0') + s;
+}
 
   return {
     Transform: Transform,

@@ -23,19 +23,19 @@
 define( ['jquery'], function($) {
   "use strict";
 
-  // Define ENUM of maturity levels for features, so that e.g. the editor can 
-  // ignore some widgets when they are not supported yet
-  var Maturity = {
+// Define ENUM of maturity levels for features, so that e.g. the editor can 
+// ignore some widgets when they are not supported yet
+var Maturity = {
   release     : 0,
   development : 1
 };
 
-  /**
-   * This class defines all the building blocks for a Visu in the "Pure" design
-   * @class VisuDesign
-   */
+/**
+ * This class defines all the building blocks for a Visu in the "Pure" design
+ * @class VisuDesign
+ */
    
-  function VisuDesign() {
+function VisuDesign() {
   var self = this;
   
   this.creators = {};
@@ -61,7 +61,7 @@ define( ['jquery'], function($) {
   this.getPopup = function(name) {
     var p = popups[name];
     if (p === undefined) {
-      return popups.unknown;
+        return popups.unknown;
     }
     return popups[name];
   }
@@ -73,11 +73,11 @@ define( ['jquery'], function($) {
       ret_val.addClass( this.type );
 
       if (attributes.title) {
-        ret_val.filter(".popup").append( $('<div class="head" />').append(attributes.title));
+          ret_val.filter(".popup").append( $('<div class="head" />').append(attributes.title));
       }
 
       if( attributes.content) {
-        ret_val.filter(".popup").append( $('<div class="main" />').append(attributes.content));
+          ret_val.filter(".popup").append( $('<div class="main" />').append(attributes.content));
       }
 
       if( attributes.width ) {
@@ -158,6 +158,9 @@ define( ['jquery'], function($) {
       var value = data;
     }
     
+    if( !('formatValueCache' in widgetData) )
+      widgetData["formatValueCache"] = {};
+    
     widgetData.basicvalue = value; // store it to be able to supress sending of unchanged data
     
     // #2: map it to a value the user wants to see
@@ -167,14 +170,14 @@ define( ['jquery'], function($) {
     if( widgetData.precision )
       value = Number( value ).toPrecision( widgetData.precision );
     if( widgetData.format ) {
-      if( !('formatValueCache' in widgetData) )
-        widgetData.formatValueCache = [widgetData.format];
-      
-      var argListPos = (widgetData.address && widgetData.address[ga])? widgetData.address[ga][3] : 1;
-      
-      widgetData.formatValueCache[argListPos] = value;
+      if( undefined !== ga )
+        widgetData.formatValueCache[ga] = value;
+      var argList = [widgetData.format];
 
-      value = sprintf.apply(this, widgetData.formatValueCache);
+      for (var addr in widgetData.address)
+        argList.push(widgetData.formatValueCache[addr]);
+
+      value = sprintf.apply(this, argList);
     }
     widgetData.value = value;
     if (undefined !== value && value.constructor == Date)
@@ -193,7 +196,7 @@ define( ['jquery'], function($) {
         case 'OH:time':
           value = value.toLocaleTimeString();
           break;
-      }
+        }
     }
     
     // #4 will happen outside: style the value to be pretty
@@ -346,15 +349,11 @@ define( ['jquery'], function($) {
   this.makeAddressList = function( element, handleVariant, id ) {
     var address = {};
     element.find('address').each( function(){ 
-      var 
-        src = this.textContent,
-        transform = this.getAttribute('transform'),
-        formatPos = +(this.getAttribute('format-pos') || 1)|0, // force integer
-        mode = 1|2; // Bit 0 = read, Bit 1 = write  => 1|2 = 3 = readwrite
-      
+      var src = this.textContent;
+      var transform = this.getAttribute('transform');
       if ((!src) || (!transform)) // fix broken address-entries in config
         return;
-      
+      var mode = 1|2; // Bit 0 = read, Bit 1 = write  => 1|2 = 3 = readwrite
       switch( this.getAttribute('mode') )
       {
         case 'disable':
@@ -373,7 +372,7 @@ define( ['jquery'], function($) {
       var variantInfo = handleVariant ? handleVariant( src, transform, mode, this.getAttribute('variant') ) : [true, undefined];
       if( (mode&1) && variantInfo[0]) // add only addresses when reading from them
         templateEngine.addAddress( src, id );
-      address[ src ] = [ transform, mode, variantInfo[1], formatPos ];
+      address[ src ] = [ transform, mode, variantInfo[1] ];
       return; // end of each-func
     });
     return address;
@@ -503,80 +502,80 @@ define( ['jquery'], function($) {
   };
 };
 
-  /*
-   * Figure out best placement of popup.
-   * A preference can optionally be passed. The position is that of the numbers
-   * on the numeric keypad. I.e. a value of "6" means centered above the anchor.
-   * A value of "0" means centered to the page
-   */
-  function placementStrategy( anchor, popup, page, preference )
+/*
+ * Figure out best placement of popup.
+ * A preference can optionally be passed. The position is that of the numbers
+ * on the numeric keypad. I.e. a value of "6" means centered above the anchor.
+ * A value of "0" means centered to the page
+ */
+function placementStrategy( anchor, popup, page, preference )
+{
+  var position_order = [ 8, 2, 6, 4, 9, 3, 7, 1, 5, 0 ];
+  if( preference !== undefined ) position_order.unshift( preference );
+  
+  for( var pos in position_order )
   {
-    var position_order = [ 8, 2, 6, 4, 9, 3, 7, 1, 5, 0 ];
-    if( preference !== undefined ) position_order.unshift( preference );
-  
-    for( var pos in position_order )
+    var xy = {};
+    switch(position_order[pos])
     {
-      var xy = {};
-      switch(position_order[pos])
-      {
-        case 0: // page center - will allways work
-          return { x: (page.w-popup.w)/2, y: (page.h-popup.h)/2 };
+      case 0: // page center - will allways work
+        return { x: (page.w-popup.w)/2, y: (page.h-popup.h)/2 };
       
-        case 1:
-          xy.x = anchor.x - popup.w;
-          xy.y = anchor.y + anchor.h;
-          break;
+      case 1:
+        xy.x = anchor.x - popup.w;
+        xy.y = anchor.y + anchor.h;
+        break;
       
-        case 2:
-          xy.x = anchor.x + anchor.w/2 - popup.w/2;
-          xy.y = anchor.y + anchor.h;
-          break;
+      case 2:
+        xy.x = anchor.x + anchor.w/2 - popup.w/2;
+        xy.y = anchor.y + anchor.h;
+        break;
       
-        case 3:
-          xy.x = anchor.x + anchor.w;
-          xy.y = anchor.y + anchor.h;
-          break;
+      case 3:
+        xy.x = anchor.x + anchor.w;
+        xy.y = anchor.y + anchor.h;
+        break;
       
-        case 4:
-          xy.x = anchor.x - popup.w;
-          xy.y = anchor.y + anchor.h/2 - popup.h/2;
-          break;
+      case 4:
+        xy.x = anchor.x - popup.w;
+        xy.y = anchor.y + anchor.h/2 - popup.h/2;
+        break;
       
-        case 5:
-          xy.x = anchor.x + anchor.w/2 - popup.w/2;
-          xy.y = anchor.y + anchor.h/2 - popup.h/2;
-          break;
+      case 5:
+        xy.x = anchor.x + anchor.w/2 - popup.w/2;
+        xy.y = anchor.y + anchor.h/2 - popup.h/2;
+        break;
       
-        case 6:
-          xy.x = anchor.x + anchor.w;
-          xy.y = anchor.y + anchor.h/2 - popup.h/2;
-          break;
+      case 6:
+        xy.x = anchor.x + anchor.w;
+        xy.y = anchor.y + anchor.h/2 - popup.h/2;
+        break;
       
-        case 7:
-          xy.x = anchor.x - popup.w;
-          xy.y = anchor.y - popup.h;
-          break;
+      case 7:
+        xy.x = anchor.x - popup.w;
+        xy.y = anchor.y - popup.h;
+        break;
       
-        case 8:
-          xy.x = anchor.x + anchor.w/2 - popup.w/2;
-          xy.y = anchor.y - popup.h;
-          break;
+      case 8:
+        xy.x = anchor.x + anchor.w/2 - popup.w/2;
+        xy.y = anchor.y - popup.h;
+        break;
       
-        case 9:
-          xy.x = anchor.x + anchor.w;
-          xy.y = anchor.y - popup.h;
-          break;
-      }
-    
-      // test if that solution is valid
-      if( xy.x >= 0 && xy.y >= 0 && xy.x+popup.w<=page.w && xy.y+popup.h<=page.h )
-        return xy;
+      case 9:
+        xy.x = anchor.x + anchor.w;
+        xy.y = anchor.y - popup.h;
+        break;
     }
-  
-    return { x: 0, y: 0 }; // sanity return
+    
+    // test if that solution is valid
+    if( xy.x >= 0 && xy.y >= 0 && xy.x+popup.w<=page.w && xy.y+popup.h<=page.h )
+      return xy;
   }
+  
+  return { x: 0, y: 0 }; // sanity return
+}
 
-  var basicdesign = new VisuDesign();
+var basicdesign = new VisuDesign();
 
   return {
     basicdesign: basicdesign,

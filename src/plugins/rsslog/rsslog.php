@@ -72,7 +72,7 @@ if( isset($_GET['c']) )
   insert( $db, $log_content, $log_title, $log_tags, $log_mapping, $log_state );
 } else if( isset($_GET['dump']) )
 {
-  $result = retrieve( $db, $log_filter, NULL, NULL );
+  $result = retrieve( $db, $log_filter, NULL );
   ?>
 <html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8" /></head><body>
 <table border="1">
@@ -122,10 +122,9 @@ if( isset($_GET['c']) )
   // send logs
   $log_filter  = $_GET['f'] ? $_GET['f'] : '';
   $state = $_GET['state']; // ? $_GET['state'] : '';
-  $future = $_GET['future'];
 
   // retrieve data
-  $result = retrieve( $db, $log_filter, $state, $future );
+  $result = retrieve( $db, $log_filter, $state );
   $first = true;
   while( sqlite_has_more($result) )
   {
@@ -173,10 +172,9 @@ Successfully deleted ID=<?php echo $id; ?>.
   // send logs
   $log_filter  = $_GET['f'] ? $_GET['f'] : '';
   $state = $_GET['state']; // ? $_GET['state'] : '';
-  $future = $_GET['future'];
 
   // retrieve data
-  $result = retrieve( $db, $log_filter, $state, $future );
+  $result = retrieve( $db, $log_filter, $state );
   echo '<?xml version="1.0"?>';
   ?>
 <rss version="2.0">
@@ -310,7 +308,7 @@ function insert( $db, $content, $title, $tags, $mapping, $state )
 }
 
 // return a handle to all the data
-function retrieve( $db, $filter, $state, $future )
+function retrieve( $db, $filter, $state )
 {
   $filters = explode(',', $filter); // accept filters by separated by ,
   foreach ($filters as $i => $val) {
@@ -319,13 +317,8 @@ function retrieve( $db, $filter, $state, $future )
   
   $q = "SELECT id, title, content, tags, mapping, state, strftime('%s', t) AS t FROM Logs WHERE (" . implode('OR', $filters) . ")";
   
-  if (isset($state) AND is_numeric($state))
+  if (isset($state))
     $q .= " AND state=" . $state . " ";
-
-  if (isset($future) AND is_numeric($future))
-    $q .= " AND ((t  <= datetime('now','+" . $future . " hour') )) ";
-  else
-    $q .= " AND ((t  <= datetime('now') ))";
   
   $q .= "ORDER by t DESC";
   if (!isset($_GET['dump']))

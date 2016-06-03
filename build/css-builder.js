@@ -17,7 +17,7 @@ define(['require', './normalize'], function(req, normalize) {
       }
       var csslen = css.length;
       try {
-        css =  csso.minify(css);
+        css =  csso.justDoIt(css);
       }
       catch(e) {
         console.log('Compression failed due to a CSS syntax error.');
