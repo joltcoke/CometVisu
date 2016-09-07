@@ -15,13 +15,12 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
- *
- * @module MultiTrigger 
- * @title  CometVisu MultiTrigger 
  */
 
 
 /**
+ * TODO: complete docs
+ * @module structure/pure/Multitrigger
  * @author Christian Mayer
  * @since 2012
  */
@@ -30,6 +29,15 @@ define( ['_common'], function( design ) {
   var basicdesign = design.basicdesign;
  
   design.basicdesign.addCreator('multitrigger', {
+  /**
+   * Description
+   * @method create
+   * @param {} element
+   * @param {} path
+   * @param {} flavour
+   * @param {} type
+   * @return BinaryExpression
+   */
   create: function( element, path, flavour, type ) {
     var $e = $(element);
     
@@ -51,54 +59,35 @@ define( ['_common'], function( design ) {
     
     // create the actor
     ret_val += '<div class="actor_container" style="float:left">';
-    var buttonCount = 0;
-    
+
     if( data.button1label )
     {
-      ret_val += '<div class="actor switchUnpressed ';
-      if( data.align ) 
-        ret_val += data.align; 
-      ret_val += '">';
-      
+      ret_val += '<div class="actor switchUnpressed">';
       ret_val += '<div class="value">' + data.button1label + '</div>';
       ret_val += '</div>';
-      if( 1 == (buttonCount++ % 2) ) ret_val += '<br/>';
     }
     
     if( data.button2label )
     {
-      ret_val += '<div class="actor switchUnpressed ';
-      if( data.align ) 
-        ret_val += data.align; 
-      ret_val += '">';
-      
+      ret_val += '<div class="actor switchUnpressed">';
       ret_val += '<div class="value">' + data.button2label + '</div>';
       ret_val += '</div>';
-      if( 1 == (buttonCount++ % 2) ) ret_val += '<br/>';
+      ret_val += '<br/>';
     }
     
     if( data.button3label )
     {
-      ret_val += '<div class="actor switchUnpressed ';
-      if( data.align ) 
-        ret_val += data.align; 
-      ret_val += '">';
-      
+      ret_val += '<div class="actor switchUnpressed">';
       ret_val += '<div class="value">' + data.button3label + '</div>';
       ret_val += '</div>';
-      if( 1 == (buttonCount++ % 2) ) ret_val += '<br/>';
     }
     
     if( data.button4label )
     {
-      ret_val += '<div class="actor switchUnpressed ';
-      if( data.align ) 
-        ret_val += data.align; 
-      ret_val += '">';
-      
+      ret_val += '<div class="actor switchUnpressed">';
       ret_val += '<div class="value">' + data.button4label + '</div>';
       ret_val += '</div>';
-      if( 1 == (buttonCount++ % 2) ) ret_val += '<br/>';
+      ret_val += '<br/>';
     }
     
     // replace button labels by mapped values 
@@ -128,12 +117,17 @@ define( ['_common'], function( design ) {
     
     return ret_val + '</div></div>';
   },
+  /**
+   * Description
+   * @method update
+   * @param {} ga
+   * @param {} d
+   */
   update: function( ga, d ) { 
     var element = $(this),
         data  = templateEngine.widgetDataGetByElement( this ),
         thisTransform = data.address[ ga ][0],
         value = templateEngine.transformDecode( thisTransform, d );
-        
     element.find('.actor').each( function(){
       var $this     = $(this),
           index = $this.index() < 3 ? $this.index()+1 : $this.index(),
@@ -143,6 +137,13 @@ define( ['_common'], function( design ) {
     });
   },
   downaction: basicdesign.defaultButtonDownAnimation,
+  /**
+   * Description
+   * @method action
+   * @param {} path
+   * @param {} actor
+   * @param {} isCanceled
+   */
   action: function( path, actor, isCanceled ) {
     basicdesign.defaultButtonUpAnimation( path, actor );
     if( isCanceled ) return;

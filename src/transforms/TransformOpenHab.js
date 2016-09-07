@@ -15,9 +15,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
- *
- * @module TransformOpenHab 
- * @title  CometVisu TransformOpenHab 
  */
 
 
@@ -161,7 +158,7 @@ define( ['TransformDefault'], function(Transform ) {
     decode : function(hsbString) {
       // decode HSV/HSB to RGB
       var hsb = hsbString.split(",");
-      var h = hsb[0], s = hsb[1], v = hsb[2];
+      var h = parseFloat(hsb[0]), s = parseFloat(hsb[1]), v = parseFloat(hsb[2]);
       var r, g, b, i, f, p, q, t;
 
       // h = h / 360;

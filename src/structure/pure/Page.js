@@ -15,13 +15,14 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
- *
- * @module Page 
- * @title  CometVisu Page 
  */
 
 
 /**
+ * TODO: complete docs
+ *
+ * @module structure/pure/Page
+ * @requires structure/pure
  * @author Christian Mayer
  * @since 2012
  */
@@ -32,6 +33,15 @@ define( ['_common'], function( design ) {
     allPages = '';
  
   design.basicdesign.addCreator('page', {
+  /**
+   * Description
+   * @method create
+   * @param {} page
+   * @param {} path
+   * @param {} flavour
+   * @param {} type
+   * @return ret_val
+   */
   create: function( page, path, flavour, type ) {
     var $p = $(page);
     
@@ -195,43 +205,60 @@ define( ['_common'], function( design ) {
     allPages = subpage + allPages;
     return ret_val;
   },
+  /**
+   * Description
+   * @method createFinal
+   */
   createFinal: function() { // special function - only for pages!
     $('#pages').prepend( allPages );
   },
+  /**
+   * Description
+   * @method update
+   * @param {} ga
+   * @param {} data
+   */
   update: function( ga, data ) {
     var 
-      element = $(this),
-      widgetData  = templateEngine.widgetDataGetByElement( element );
-    var value = basicdesign.defaultValueHandling( ga, data, widgetData );
-    var type = widgetData.address[ ga ][2];
-    switch( type )
-    {
-      case 'azimut':
-        widgetData.JSFloorPlan3D.setState('currentAzimut', value, true);
-        element.trigger( 'update3d', widgetData.JSFloorPlan3D );
-        break;
-        
-      case 'elevation':
-        widgetData.JSFloorPlan3D.setState('currentElevation', value, true);
-        element.trigger( 'update3d', widgetData.JSFloorPlan3D );
-        break;
-        
-      case 'floor':
-        widgetData.JSFloorPlan3D.moveToRoom( value, false, true, true, function(){
-          element.trigger( 'update3d', widgetData.JSFloorPlan3D );
-        });
-        break;
-        
-      default:
-        // TODO: data comparision has to be refactored to use DPT and a value
-        if (data==1) {
-          templateEngine.scrollToPage(element.context.firstChild.textContent);
-          templateEngine.visu.write( ga, templateEngine.transformEncode('DPT:1.001', 0));
-        }
+      element = $(this);
+    // widgetData  = templateEngine.widgetDataGetByElement( element );
+    // var value = basicdesign.defaultValueHandling( ga, data, widgetData );
+    // var type = widgetData.address[ ga ][2];
+    // switch( type )
+    // {
+    //   case 'azimut':
+    //     widgetData.JSFloorPlan3D.setState('currentAzimut', value, true);
+    //     element.trigger( 'update3d', widgetData.JSFloorPlan3D );
+    //     break;
+    //
+    //   case 'elevation':
+    //     widgetData.JSFloorPlan3D.setState('currentElevation', value, true);
+    //     element.trigger( 'update3d', widgetData.JSFloorPlan3D );
+    //     break;
+    //
+    //   case 'floor':
+    //     widgetData.JSFloorPlan3D.moveToRoom( value, false, true, true, function(){
+    //       element.trigger( 'update3d', widgetData.JSFloorPlan3D );
+    //     });
+    //     break;
+    //
+    //   default:
+    // TODO: data comparision has to be refactored to use DPT and a value
+    if (data==1) {
+      templateEngine.scrollToPage(element.context.firstChild.textContent);
+      templateEngine.visu.write( ga, templateEngine.transformEncode('DPT:1.001', 0));
     }
+    // }
   },
-  action: function( path, actor, isCaneled ) {
-    if( isCaneled ) return;
+  /**
+   * Description
+   * @method action
+   * @param {} path
+   * @param {} actor
+   * @param {} isCanceled
+   */
+  action: function( path, actor, isCanceled ) {
+    if( isCanceled ) return;
     
     templateEngine.scrollToPage( path + '_' );
   }
