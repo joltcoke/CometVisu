@@ -56,7 +56,8 @@ Und nun noch einmal dieselben Schritte im Detail:
 1. Auf Kommandozeile in das Verzeichnis mit dem lokalen Repository wechseln
    ``git checkout -b name-des-branches`` (Der Name des neuen Branches kann frei gewählt werden, es darf nur kein existierender sein)
 2. Die gewünschten Dateien mit einem Editor nach Wahl bearbeiten und speichern
-3. ``git commit -a -m "Kurze Beschreibung der Änderung"`` (Die Beschreibung nach Möglichkeit auf Englisch formulieren)
+3. ``git commit -a -m "Kurze Beschreibung der Änderung"`` (Die Beschreibung nach Möglichkeit auf Englisch formulieren). 
+   Mit ``git status`` kann zunächst nochmal geprüft werden, welche Änderungen alle *commited* werden. 
 4. s.o.
 5. ``git push``
 6. Auf die Github-Seite des private Repositories gehen und auf *new pull request* klicken.
@@ -76,15 +77,124 @@ im Pull-Request tun. Ist dies der Fall, kommt nun der Vorteil des im Schritt 1. 
 Man muss nähmlich nur die Schritte 2., 3. und 5. ausführen um die Korrekturwünsche des Maintainers auszuführen.
 Damit sind die Änderungen automatisch Teil des vorhandenen Pull-Requests.
 
+Sind alle Änderungen abgestimmt und übernommen worden, kann der Branch gelöscht werden.
+``git branch -D name-des-branches``
+
 Wenn man z.B. schon mit neuen Änderungen in einem neuen Branch begonnen hat, kann man beliebig zwischen den Branches
 hin und her wechseln und so sogar mehrere Pull-Requests und Änderungen gleichzeitig bearbeiten ohne diese inhaltlich
 zu vermischen. In einen anderen Branch wechseln kann man immer nach einem commit (siehe Schritt 3.) mit
-``git checkout name-des-branches``
+``git checkout name-des-branches``.
+
+Repositories synchron halten
+----------------------------
+
+Über github.com
+^^^^^^^^^^^^^^^
+
+Um die von anderen Entwicklern *gemergeden* Änderungen mit dem eigenen Fork synchron zu halten, muss ein Pull-Request  
+vom privaten Repository aus gemacht werden. In der Zeile *This branch is ... commits ahead of CometVisu:develop.* zeigt 
+an, wieviele Änderungen seit der letzten Synchronisierung vorgenommen wurden. Direkt daneben befindet sich der Link zum *Pull Request*, 
+welcher in der darauffolgenden Seite die Änderungen anzeigt, die in das private Repository *gemerged* werden können. 
+
+.. figure:: doc/_static/pull_request_sync.png
+
+	Pull Request für Synchronisation zwischen Haupt- und privaten Repository
+
+.. figure:: doc/_static/github_sync2.png
+
+	Vergleich der Änderungen
+
+.. IMPORTANT::
+
+	Wichtig bei diesem Vergleich ist, dass der eigene *base fork* links und der offizielle *head fork* rechts steht.
+
+.. figure:: doc/_static/github_sync3.png
+
+	Merge pull request erzeugen
+
+Das Akzeptieren aller Änderungen synchronisiert die Änderungen vom Haupt-Repository auf das private Repository.   
+
+.. figure:: doc/_static/github_sync4.png
+
+	Merge bestätigen
+
+.. figure:: doc/_static/github_sync5.png
+
+	Erfolgreiche Synchronisierung   
+     
+Die lokale Kopie des privaten Repositories muss dann ebenso aktualisiert werden. Dazu muss im lokalen Repository in den Branch 
+*develop* gewechselt werden (``git checkout develop``), dort werden alle abgestimmten Änderungen der Entwickler *gemerged*.
+Mit dem Befehl ``git pull`` erfolgt die Synchronisation zwischen lokalem und privatem Repository. Nachdem nun alle Repositories 
+wieder synchron sind, kann wie oben unter 1. beschrieben mit neuen Änderungen an der Dokumentation fortgefahren werden.
+
+
+Über die Kommandozeile
+^^^^^^^^^^^^^^^^^^^^^^
+
+Natürlich kann man den lokalen Klon seines Repositories auch rein über Kommandozeilenbefehle komfortabel synchron halten.
+Um dieses möglichst einfach zu machen, muss man die *Remotes* seines lokalen Klons entsprechend konfigurieren.
+
+.. HINT::
+    Für die folgenden Beispiele wird angenommen, dass man den Usernamen ``gh-user`` hat und das CometVisu Repository über SSH
+    geklont wurde (``git clone git@github.com:gh-user/CometVisu.git``). Wenn über HTTPS geklont wurde
+    (``https://github.com/CometVisu/CometVisu.git``) sehen die URLs entsprechend anders aus.
+
+Zusammenfassung
+"""""""""""""""
+
+.. code-block:: bash
+
+    # aktuelle Einstellungen abfragen
+    git remote -v
+    >>> origin	git@github.com:gh-user/CometVisu.git (fetch)
+    >>> origin	git@github.com:gh-user/CometVisu.git (push)
+
+    # Aktualisierungen vom original Repository holen
+    git remote set-url origin git@github.com:CometVisu/CometVisu.git
+
+    # aktuelle Einstellungen prüfen
+    git remote -v
+    >>> origin	git@github.com:CometVisu/CometVisu.git (fetch)
+    >>> origin	git@github.com:gh-user/CometVisu.git (push)
+
+    # develop branch mit original Repository synchronisieren
+    git checkout develop
+    git pull
+
+Ausführliche Vorgehensweise
+"""""""""""""""""""""""""""
+
+Die aktuellen Einstellungen kann man mit dem Befehl ``git remote -v`` abfragen.
+Üblicherweise liefert das folgende Werte:
+
+.. code-block:: bash
+
+    origin	git@github.com:gh-user/CometVisu.git (fetch)
+    origin	git@github.com:gh-user/CometVisu.git (push)
+
+Das bedeuted, dass git beim Aktualisieren (*fetch*, *pull*) und auch beim *pushen* den Fork des Users auf github benutzt.
+Man möchte nun aber möglichst einfach Änderungen auf dem Haupt-Repository in den lokalen Klon laden. Dazu ändert man die
+*fetch* URL des remotes mit folgendem Befehl: ``git remote set-url origin git@github.com:CometVisu/CometVisu.git``.
+Danach sollte ``git remote -v`` folgende Ausgabe liefern:
+
+.. code-block:: bash
+
+    origin	git@github.com:CometVisu/CometVisu.git (fetch)
+    origin	git@github.com:gh-user/CometVisu.git (push)
+
+Damit sind die Vorraussetzungen erfüllt und man kann seinen lokalen *develop* Branch (dieser enthält die neuesten Weiterenwicklungen)
+ganz einfach durch ein ``git pull`` aktualisieren.
+
+.. HINT::
+    Diese Vorgehensweise ist nur ratsam, wenn man nur an einem Rechner Änderungen an der CometVisu vornimmt.
+    Wenn man gleichzeitig mehrere Rechner benutzt, muss man zwangsläufig die Änderungen die man von dem anderen Rechner
+    in den eigenen Fork *gepushed* hat in den lokalen Klon bekommen. Dazu kann man ein zweites Remote einrichten mit
+    ``git remote add fork git@github.com:gh-user/CometVisu.git`` und dann davon *pullen*
+    ``git pull fork develop``
 
 .. TODO::
 
     * weitere nützliche Git-Befehle (branches löschen, status, ...)
-    * Eigenen Fork vom Haupt-Repository aktualisieren
     * Merge-Konflikte
     * Ablauf-Diagramm für Workflow Änderung -> Pull-Request
 
@@ -119,6 +229,28 @@ Mit dem Wissen dieses Abschnitts sollte es möglich sein, eigene Beiträge für 
 
     * Lokales Erzeugen der HTML-Doku, inkl. Screenshots
 
+Dokumentation schreiben mit VisualStudio Code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Der Editor `Visual Studio Code <https://code.visualstudio.com>`__ bietet ein Plugin, mit dessen Hilfe man sich eine
+Live Preview der geschriebenen Dokumentation anzeigen lassen kann. Dazu muss zunächst der Editor installiert werden und
+darin die Extension ``restructuredtext`` (über den Menüpunkt Anzeigen -> Extensions suchen nach rst) installiert werden.
+Nach einmaligem Neuladen des Editors steht diese zur Verfügung.
+
+
+Damit die Live Preview funktioniert muss Python installiert sein.
+Eine Anleitung um die nötigen Vorraussetzungen zu schaffen findet man hier:
+`Install Sphinx <https://github.com/vscode-restructuredtext/vscode-restructuredtext/blob/master/docs/sphinx.md>`__
+
+
+Ist alles korrekt eingerichtet, kann man eine RST-Datei aus der Dokumentation öffnen und mit ``Strg+Shift r`` das Live-Preview Fenster öffnen.
+Änderungen an der RST-Datei, sollten dann mit kurzer Verzögerung automatisch in Preview Fenster zu sehen sein.
+
+.. figure:: doc/_static/visual_studio_live_preview.png
+
+   Ansicht des Editors mit Live-Preview
+
+
 Mithilfe bei der Entwicklung
 ----------------------------
 
@@ -133,5 +265,49 @@ Mithilfe bei der Entwicklung
 .. toctree::
 
     dev/test
+
+
+Fehlerbericht erstellen
+-----------------------
+
+Fehlerberichte sollten nach Möglichkeit durch Anlegen eines Issues auf `github.com <https://github.com/CometVisu/CometVisu/issues>`__
+erfolgen. Bevorzugte Sprache ist hier Englisch. Der Fehlerbericht sollte aus folgenden Teilen bestehen, die so detailliert wie möglich
+ausformuliert sind.
+
+1. Welche Schritte sind nötig um das Fehlverhalten hervorzurufen
+2. Eine detaillierte Fehlerbeschreibung
+3. Wie würde das korrekte Verhalten aus Sicht des Autors aussehen
+4. [Optional] eine Logdatei mit aufgezeichnetem Fehler
+
+.. HINT::
+
+    Bei Unsicherheiten bzgl. des Fehlers kann zunächst im `KNX-User-Forum <https://knx-user-forum.de/forum/supportforen/cometvisu>`__
+    oder auf `Gitter <https://gitter.im/CometVisu/CometVisu_DE>`__ um Rat gefragt werden.
+
+
+Fehlerberichte mit Log-Dateien
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Ab Version 0.11.0 steht eine zusätzliche Möglichkeit zur Verfügung, den Entwicklern die Fehlersuche zu erleichtern
+und die Fehlerberichte zu verbessern. Benutzer können das Verhalten der CometVisu aufzeichnen und eine sogenannte
+Log-Datei zu Verfügung stellen (am besten als Anhang an das Issue hängen).
+
+.. HINT::
+
+    Sie Aufzeichnung der Log-Dateien kann mit dem URL-Parameter ``reporting=true`` aktiviert werden
+    (siehe: :ref:`URL-Parameter <reporting>`). Sobald man den Fehler nachgestellt hat, kann die Logdatei durch Eingabe
+    des Befehls ``downloadLog()`` in der Browserkonsole (öffnen mit F12-Taste) heruntergeladen werden.
+
+Die Log-Dateien enthalten die Konfigurationsdatei, sämtliche Kommunikation mit dem Backend und die Benutzerinteraktionen
+( z.B. Klicks auf Widgets usw.). Daher muss der Benutzer damit einverständen sein diese Daten zu veröffentlichen.
+Eventuell ist es daher ratsam, denn Fehler mit einer abgewandelten Konfigurationsdatei zu erstellen, die z.B. keine
+sensiblen Daten enthält.
+Der große Vorteil dieser Log-Dateien ist aber, dass die Entwickler beim Abspielen dieser Logs eine originalgetreue
+Nachbildung des Benutzersystems sehen und somit in der Regel auch direkt den Fehler sehen, diesen beheben und direkt
+testen können ob die Fehlerkorrektur auch wirkt.
+
+Natürlich gibt es auch Einschränkungen, denn nicht alles kann durch die Log-Dateien aufgezeichnet werden.
+Wenn ein Nutzer z.B. die vorhandenen Designs angepasst hat, eigene Icons/Bilder benutzt, die nicht Teil der
+CometVisu sind, so fehlen diese beim Abspielen, da sie nicht Teil des Logs sind.
 
 .. [RST-Wiki] https://de.wikipedia.org/wiki/ReStructuredText

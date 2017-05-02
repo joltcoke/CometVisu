@@ -1,3 +1,8 @@
+.. replaces:: CometVisu/0.8.x/mapping/de
+    CometVisu/mapping
+    CometVisu/mapping_(Deutsch)
+    CometVisu/0.8.0/mapping/de
+
 .. _mapping:
 
 =======
@@ -192,6 +197,23 @@ priorisiert werden, als die Werte innerhalb eines Wertebereichs. Dadurch
 ist es möglich, für einzelne Werte Sonderbezeichnungen (in diesem Fall
 die "Null") zu definieren.
 
+Besondere Mapping-Werte
+-----------------------
+
+Es gibt zwei Mapping Werte die gesondert behandelt werden:
+
+ * ``NULL``: wird angewendet, wenn der Wert leer ist
+ * ``*``: wird angewendet, wenn kein vorher definiertes Mapping für den Wert gefunden wurde
+
+.. code-block:: xml
+
+    <mapping name="Fehler">
+        <entry value="NULL">Fehler</entry>
+        <entry value="*">Ok</entry>
+    </mapping>
+
+Liefert das Backend keine Wert, liefert das Mapping den Wert *Fehler* zurück, ansonsten *Ok*.
+
 Formeln (Einsteiger)
 --------------------
 
@@ -239,6 +261,18 @@ Beispielsweise kann man damit °C in °F umrechnen:
             </info>
         </group>
 
+Mit diesem Beispiel können fehlerhafte Sensoren in einer Übersichtsseite markiert werden.
+Sensoren liefern in der Regel nummerische Werte. Bleiben diesen aus, kann z.B. das expire-Binding 
+in openHAB einen negativen Wert zurückliefern. Das Mapping würde ein *OK* oder *not OK* liefern:
+
+.. code-block:: xml
+
+		<mapping name="SensorAlarm">
+			<formula>y = (x >= 0) ? "OK" : "not OK";</formula>
+		</mapping>
+
+.. figure:: _static/sensor_alarme.png
+   
 Formeln (Advanced)
 ------------------
 

@@ -1,3 +1,12 @@
+.. replaces:: CometVisu/0.8.x/manual/de
+    Benutzerhandbuch
+    CometVisu/0.8.1/manual/de
+    CometVisu/Benutzerhandbuch
+    CometVisu/handbook/de
+    CometVisu/manual/de
+    CometVisu/0.8.0/manual/de
+    CometVisu/Manual
+
 #############################
 Willkommen bei der CometVisu!
 #############################
@@ -8,11 +17,7 @@ den eibd, bzw. knxd) oder auf alles aus der
 `OpenHAB <http://www.openhab.org/>`__-Welt. Die aktuelle Version wird
 auf `Github <http://github.com/CometVisu/CometVisu>`__ veröffentlicht.
 
-.. CAUTION::
-    Diese Dokumentation wird zu Zeit von Grund auf neu aufgebaut ist
-    daher nicht vollständig. Solange noch nicht alle Inhalte übertragen
-    worden sind, dient das bekannte `CometVisu-Wiki <http://www.cometvisu.org>`__
-    als weitere Informationsquelle.
+.. _system-voraussetzungen:
 
 Systemvoraussetzungen
 ---------------------
@@ -91,4 +96,5 @@ oder `hier <http://de.selfhtml.org/helferlein/farben.htm>`__
     install/index
     config/index
     colab/index
+    faq
 

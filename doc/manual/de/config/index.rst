@@ -1,3 +1,6 @@
+.. replaces:: CometVisu/0.8.x/manual/de
+    CometVisu/Examples
+
 ***************************
 Konfiguration der CometVisu
 ***************************
@@ -84,11 +87,9 @@ Der strukturierte Aufbau der xml-formatierte Konfigurationsdatei ist in mehrere
 Sektionen unterteilt, innerhalb derer alle weiteren Einträge verschachtelt und durch
 Tags umschlossen aufgenommen werden.
 
-.. TODO::
+.. toctree::
 
-    - Aufbau der Konfiguration (Grundstruktur)
-    - *Attribute*: Allgemein erklären
-    - *Elemente*: Allgemein erklären
+    xml-format
 
 
 Navigationselemente in der CometVisu
@@ -101,11 +102,13 @@ Navigationselemente in der CometVisu
 Die verfügbaren Designs
 ------------------------
 
-.. toctree::
-    :glob:
-    :maxdepth: 1
-
-    designs/*
+* :doc:`Metal <examples/swiss>` - das wohl beliebteste Design
+* Pure - Standard-Design
+* Diskreet
+* Diskreet Sand
+* Diskreet Slim
+* Alaska
+* Alaska Slim
 
 .. TODO::
 
@@ -141,7 +144,7 @@ Widgets in der CometVisu
 
 Widgets sind die einzelnen Elemente aus denen eine CometVisu-Site
 zusammengebaut wird. Diese können entweder fest in der CometVisu
-eingebaut sein oder per Plugin-Schnittstelle intergriert.
+eingebaut sein oder per Plugin-Schnittstelle integriert.
 
 Die Beschreibung der Widgets kann man hier nachlesen:
 
@@ -152,9 +155,14 @@ Die Beschreibung der Widgets kann man hier nachlesen:
 CometVisu - Beispiele
 ---------------------
 
-.. TODO::
+Hier befindes sich mehrere Beispiele von Visualisierungen die sich im produktiven Einsatz befinden.
 
-    Beispiele hinzufügen
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
+    examples/*
+
 
 sonstiges
 ---------

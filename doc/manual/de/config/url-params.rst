@@ -1,3 +1,5 @@
+.. replaces:: CometVisu/URL_parameter/de
+
 URL-Parameter
 =============
 
@@ -150,3 +152,66 @@ funktionieren.
 
     Default: 0 (testMode=0)
     Options: 0 (testMode=0), 1 (testMode=1)
+
+*enableCache* - Caching aktivieren
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Durch den Parameter ``enableCache`` kann das Caching konfiguriert werden. Dieses bewirkt, dass eine Config
+nicht bei jeden Laden komplett neu eingelesen wird und daraus eine HTML-Seite generiert wird, sondern dass
+die gerenderte HTML-Struktur inkl. aller weiterer benötigter Daten lokal im Browser gespeichert werden
+(im LocalStore). Bei jedem weiteren Laden der Config werden die Daten also aus dem Cache gelesen, was
+das Laden der Visu auf leistungsschwachen Geräten wie z.B. Smartphones beschleunigt.
+
+Der Cache kann über diesen Parameter aktiviert (=true), deaktivert (=false) oder gelöscht werden (=invalid).
+Das Löschen bewirkt, dass alle Werte aus dem Cache gelöscht werden und neu angelegt werden.
+
+.. code::
+
+    Default: true (enableCache=true)
+    Options: false (enableCache=false), true (enableCache=true), invalid (enableCache=invalid)
+
+.. _reporting:
+
+*reporting* - Session aufzeichnen
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Zur Unterstützung einer Fehlermeldung, kann die Interaktion mit der CometVisu aufgezeichnet und
+den Entwicklern als Log-Datei zu Verfügung gestellt werden. Diese können damit genau sehen, welche Daten
+zwischen der CometVisu und dem Backend geflossen sind und welche Aktionen der Benutzer vorgenommen hat.
+Idealerweise lässt sich ein Fehler mit diesen Log-Dateien zuverlässig reproduzieren und erleichern so die Behebung
+des Problems erheblich.
+
+.. code::
+
+    Default: false (reporting=false)
+    Options: true  (reporting=true), false (reporting=false)
+
+.. ATTENTION::
+
+    In den Log-Dateien wird die komplette Konfigurationsdatei abgespeichert. Sollten sich Zugangsdaten in dieser
+    Konfiguration befinden, sollte eine Kopie der Konfiguration ohne solch sensible Daten erstellt werden
+    und das Log mit dieser Konfiguration aufgezeichnet werden.
+
+Um diese Log-Dateien aufzuzeichnen, muss man die CometVisu mit `reporting=true` laden.
+Nachdem man den fehlerhaften Zustand erreicht hat, kann man die Log-Datei herunterladen indem man in der
+Browser-Console (öffnen mit F12) ``downloadLog()`` ein gibt und mit *enter* bestätigt.
+
+.. HINT::
+
+    Da die Log-Dateien in Echtzeit abgespielt werden, empfiehlt es sich die Laufzeit möglichst kurz zu halten.
+    Eine Log-Datei die 30 Minuten oder mehr läuft bis das Problem zu sehen ist, wird die Fehlerbehebung
+    erschweren, da der Entwickler diese ggf. sehr oft abspielen muss während der Fehleranalyse und -behebung.
+
+
+.. _log:
+
+*log* - Logging in der Browserconsole an-/abschalten
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mit diesem Parameter können die Debug-Logausgaben auf der Browserkonsole ein- und ausgeschaltet werden.
+In der Entwicklerversion sind diese standardmäßig eingeschaltet in einem Release aus.
+
+.. code::
+
+    Default: false im Release, true in Entwicklerversion
+    Options: true  (log=true), false (log=false)

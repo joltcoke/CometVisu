@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import json
-
-import sphinx_rtd_theme
 import sys, os
+from datetime import date
 
 root_dir = os.path.abspath(os.path.join('..', '..', '..'))
 
-extensions_path = os.path.join(root_dir, '.doc', 'docutils', 'directives')
+extensions_path = os.path.join(root_dir, 'utils', 'docutils', 'directives')
 
 sys.path.insert(0, extensions_path)
 
@@ -29,21 +28,31 @@ language = 'de'
 locale_dirs = ["locale/"]
 
 project = 'CometVisu'
-copyright = '2010-2016 Christian Mayer and the CometVisu contributers'
+copyright = '2010-%s Christian Mayer and the CometVisu contributers' % date.today().year
 
 with open(os.path.join(root_dir, "package.json")) as data_file:
     data = json.load(data_file)
     version = data['version']
 
+# read versions file
+versions_file = os.path.join(root_dir, 'out', language, 'versions.json')
+versions = []
+if os.path.exists(versions_file):
+    with open(versions_file) as f:
+        data = json.load(f)
+        for ver in data['versions']:
+            versions.append((ver, '../../%s/manual' % ver))
+
+releaselevel = 'dev' if version[-4:] == '-dev' else 'release'
 release = ''
 
 # -- Options for HTML output ---------------------------------------------------
 
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme_path = [os.path.join(root_dir, 'utils', 'docutils', 'template', 'sphinx_rtd_theme-0.2.4')]
 html_title = "CometVisu"
 #html_short_title = None
-html_logo = os.path.join(root_dir, "src", "icon", "comet_webapp_icon_android_48.png")
+html_logo = os.path.join(root_dir, "source", "resource", "icon", "comet_webapp_icon_android_48.png")
 #html_favicon = None
 html_static_path = ['_static']
 html_domain_indices = False
@@ -51,6 +60,12 @@ html_use_index = True
 html_show_sphinx = False
 htmlhelp_basename = 'CometVisu'
 html_show_sourcelink = False
+
+if len(versions):
+    html_context = {
+        'versions': versions,
+        'current_version': version
+    }
 
 # -- Options for LaTeX output --------------------------------------------------
 
@@ -172,6 +187,8 @@ code_add_python_path = ["../py"]
 
 def setup(app):
     app.add_stylesheet('theme_override.css')
+    app.add_config_value('releaselevel', '', 'env')
+
     from sphinx.util.texescape import tex_replacements
     tex_replacements += [(u'♮', u'$\\natural$'),
                          (u'ē', u'\=e'),

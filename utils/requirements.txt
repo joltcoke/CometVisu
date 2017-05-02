@@ -1,0 +1,9 @@
+docutils==0.12
+sh
+sphinx==1.4.8
+lxml
+sphinxcontrib-plantuml
+configparser
+PyYAML
+rjsmin
+semver

@@ -1,7 +1,11 @@
+.. replaces:: CometVisu/0.8.x/widgets/page/de
+
 .. _page:
 
 Das Page Widget
 ===============
+
+.. api-doc:: Page
 
 Beschreibung
 ------------
@@ -25,12 +29,12 @@ Das Verhalten und Aussehen des Page-Widgets kann durch die Verwendung von Attrib
 Die folgenden Tabellen zeigen die erlaubten Attribute und Elemente. In den Screenshots sieht man, wie
 beides über den :ref:`Editor <editor>` bearbeitet werden kann.
 
-Nur die mit * gekennzeichneten Attribute/Elemente müssen zwingend angegeben werden, alle anderen sind optional und können
+Nur die mit ..... unterstrichenen Attribute/Elemente müssen zwingend angegeben werden, alle anderen sind optional und können
 daher weg gelassen werden.
 
 
 Erlaubte Attribute im Page-Element
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. parameter-information:: page
 
@@ -40,9 +44,9 @@ Erlaubte Attribute im Page-Element
     :align: center
 
         <caption>Attribute im Editor (vereinfachte Ansicht) [#f1]_</caption>
-        <page>
+        <page name="Testseite">
           <layout colspan="4" />
-          <text>Test</text>
+          <text><label>Test</label></text>
         </page>
 
 
@@ -73,3 +77,6 @@ Hier der Beispielcode der die Page mit den oben gezeigten Eigenschaften einfügt
         ....
         </page>
 
+.. rubric:: Fußnoten
+
+.. [#f1] In der vereinfachten Ansicht sind ggf. einige Dinge ausgeblendet. In der Expertenansicht ist alles zu sehen.

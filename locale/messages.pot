@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2016-08-28 13:19+CEST\n"
+"POT-Creation-Date: 2016-10-16 10:08+CEST\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,53 +15,92 @@ msgstr ""
 "Generated-By: pygettext.py 1.5\n"
 
 
-#: .doc/docutils/directives/common.py:29 .doc/docutils/directives/common.py:55
-#: .doc/docutils/directives/common.py:57
+#: utils/commands/scaffolding.py:83
+msgid "The %s plugin"
+msgstr ""
+
+#: utils/commands/scaffolding.py:83
+msgid "The %s widget"
+msgstr ""
+
+#: utils/docutils/directives/api_doc.py:54
+msgid "Available since version"
+msgstr ""
+
+#: utils/docutils/directives/api_doc.py:55
+msgid "Author"
+msgstr ""
+
+#: utils/docutils/directives/common.py:41 utils/docutils/directives/common.py:65
+#: utils/docutils/directives/common.py:67
 msgid "or"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:30
+#: utils/docutils/directives/common.py:42
 msgid "string"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:31
+#: utils/docutils/directives/common.py:43
 msgid "decimal"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:118
-#: .doc/docutils/directives/common.py:124
-#: .doc/docutils/directives/common.py:227
-#: .doc/docutils/directives/common.py:233
+#: utils/docutils/directives/common.py:44
+msgid "uri"
+msgstr ""
+
+#: utils/docutils/directives/common.py:45
+msgid "addr"
+msgstr ""
+
+#: utils/docutils/directives/common.py:46
+msgid "nonNegativeInteger"
+msgstr ""
+
+#: utils/docutils/directives/common.py:47
+msgid "dimension"
+msgstr ""
+
+#: utils/docutils/directives/common.py:110
+#: utils/docutils/directives/common.py:116
+#: utils/docutils/directives/common.py:181
+#: utils/docutils/directives/common.py:188
+msgid "mandatory"
+msgstr ""
+
+#: utils/docutils/directives/common.py:131
+#: utils/docutils/directives/common.py:137
+#: utils/docutils/directives/common.py:244
+#: utils/docutils/directives/common.py:250
 msgid "Attribute"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:118
-#: .doc/docutils/directives/common.py:227
+#: utils/docutils/directives/common.py:131
+#: utils/docutils/directives/common.py:244
 msgid "Element"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:119
-#: .doc/docutils/directives/common.py:125
-#: .doc/docutils/directives/common.py:228
-#: .doc/docutils/directives/common.py:234
+#: utils/docutils/directives/common.py:132
+#: utils/docutils/directives/common.py:138
+#: utils/docutils/directives/common.py:245
+#: utils/docutils/directives/common.py:251
 msgid "Content"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:119
-#: .doc/docutils/directives/common.py:125
-#: .doc/docutils/directives/common.py:228
-#: .doc/docutils/directives/common.py:234
+#: utils/docutils/directives/common.py:132
+#: utils/docutils/directives/common.py:138
+#: utils/docutils/directives/common.py:245
+#: utils/docutils/directives/common.py:251
 msgid "Description"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:119
-#: .doc/docutils/directives/common.py:125
-#: .doc/docutils/directives/common.py:228
-#: .doc/docutils/directives/common.py:234
+#: utils/docutils/directives/common.py:132
+#: utils/docutils/directives/common.py:138
+#: utils/docutils/directives/common.py:245
+#: utils/docutils/directives/common.py:251
 msgid "Name"
 msgstr ""
 
-#: .doc/docutils/directives/common.py:228
+#: utils/docutils/directives/common.py:245
 msgid "Structure"
 msgstr ""
 
