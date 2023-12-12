@@ -123,6 +123,16 @@ qx.Class.define('cv.io.iobroker.Client', {
       this.__subscribedAddresses = addresses;
     },
 
+    __serverGetHistory(address, start, end) {
+      return this.__send_message('getHistory', address, {
+        start: start,
+        end: end,
+        count: 10000,
+        aggregate: 'average',
+        ignoreNull: true,
+      });
+    },
+
     __serverGetStates(addresses) {
       return this.__send_message('getStates', addresses);
     },
@@ -336,6 +346,62 @@ qx.Class.define('cv.io.iobroker.Client', {
      * @param data {var}
      */
     processChartsData(data) {},
+
+    __convertTimes(time) {
+      if (time === 'now') {
+        return new Date();
+      } else if (/^[\d]+$/.test(time)) {
+        let d = new Date();
+        d.setTime(parseInt(time) * 1000);
+        return d;
+      }
+      return null;
+    },
+
+    async fetchDiagramData(address, start, end, arg2, arg3, arg4, arg5) {
+      if (!this.isConnected()) {
+        return; 
+      }
+
+      let endTime = end ? this.__convertTimes(end) : new Date();
+      let startTime = new Date();
+      const match = /^end-([\d]*)([\w]+)$/.exec(start);
+      if (match) {
+        const amount = parseInt(match[1]) || 1;
+        let interval = 0;
+        switch (match[2]) {
+          case 'second':
+            interval = 1000;
+            break;
+          case 'minute':
+            interval = 60000;
+            break;
+          case 'hour':
+            interval = 60 * 60000;
+            break;
+          case 'day':
+            interval = 24 * 60 * 60000;
+            break;
+          case 'week':
+            interval = 7 * 24 * 60 * 60000;
+            break;
+          case 'month':
+            interval = 30 * 24 * 60 * 60000;
+            break;
+          case 'year':
+            interval = 365 * 24 * 60 * 60000;
+            break;
+        }
+
+        startTime.setTime(endTime.getTime() - amount * interval);
+      } else if (/^[\d]+$/.test(start)) {
+        startTime.setTime(parseInt(start) * 1000);
+      }
+
+      const result = await this.__serverGetHistory(address, startTime.getTime(), endTime.getTime());
+
+      return result[1].filter(entry => (entry.val !== null)).map(entry => ([entry.ts, [entry.val]]));
+    },
 
     /**
      * This function sends a value

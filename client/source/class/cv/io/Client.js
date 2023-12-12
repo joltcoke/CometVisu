@@ -717,7 +717,8 @@ qx.Class.define('cv.io.Client', {
     },
     getProviderData: function (name, format) {
       return null;
-    }
+    },
+    fetchDiagramData(arg1, arg2, arg3, arg4, arg5) {}
   },
 
   /*

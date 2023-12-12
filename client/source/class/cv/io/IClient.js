@@ -87,6 +87,8 @@ qx.Interface.define('cv.io.IClient', {
      */
     getProviderConvertFunction(name, format) {},
 
+    fetchDiagramData(arg1, arg2, arg3, arg4, arg5) {},
+
     /**
      * Set a subset of addresses the client should request initially (e.g. the ones one the start page).
      * This can be used to increase the init state loading speed by sending an initial request with a smaller

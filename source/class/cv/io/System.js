@@ -247,6 +247,8 @@ qx.Class.define('cv.io.System', {
 
     getProviderConvertFunction(name, format) {
       return null;
-    }
+    },
+
+    fetchDiagramData(arg1, arg2, arg3, arg4, arg5) {}
   }
 });

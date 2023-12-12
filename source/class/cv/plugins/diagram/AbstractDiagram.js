@@ -288,10 +288,12 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
         end: end
       });
 
-      if (ts.tsType !== 'influx' && chartsResource !== null) {
+      if (ts.tsType !== 'influx' && chartsResource) {
         // the backend provides an charts resource that must be processed differently (e.g. openHABs persistence data
         url = chartsResource;
         key = url;
+      } else if (client.getType() === 'iobroker') {
+        key = JSON.stringify({ address: ts.src, start: start, end: end });
       } else {
         url =
           (ts.tsType === 'influx'
@@ -326,32 +328,41 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
         }
         this.cache[key].waitingCallbacks.push([callback, callbackParameter]);
 
-        if (this.cache[key].waitingCallbacks.length === 1) {
-          if (this.cache[key].xhr) {
-            this.cache[key].xhr.dispose();
-          }
-          const xhr = new qx.io.request.Xhr(url);
-          client.authorize(xhr);
-          xhr.set({
-            accept: 'application/json'
-          });
+        if (client.getType() === 'iobroker') {
+          client.fetchDiagramData(ts.src, start, end).then((result) => {
+            if (!result) {
+              return;
+            }
 
-          xhr.addListener('success', ev => {
-            this._onSuccess(ts, key, ev, forceNowDatapoint);
+            this._onSuccess(ts, key, result, forceNowDatapoint);
           });
-          xhr.addListener('statusError', ev => {
-            this._onStatusError(ts, key, ev);
-          });
-          this.cache[key].xhr = xhr;
-          xhr.send();
+        } else {  
+          if (this.cache[key].waitingCallbacks.length === 1) {
+            if (this.cache[key].xhr) {
+              this.cache[key].xhr.dispose();
+            }
+            const xhr = new qx.io.request.Xhr(url);
+            client.authorize(xhr);
+            xhr.set({
+              accept: 'application/json'
+            });
+
+            xhr.addListener('success', ev => {
+              this._onSuccess(ts, key, ev.getTarget().getResponse(), forceNowDatapoint);
+            });
+            xhr.addListener('statusError', ev => {
+              this._onStatusError(ts, key, ev);
+            });
+            this.cache[key].xhr = xhr;
+            xhr.send();
+          }
         }
       } else {
         callback(this.cache[key].data, callbackParameter);
       }
     },
 
-    _onSuccess(ts, key, ev, forceNowDatapoint) {
-      let tsdata = ev.getTarget().getResponse();
+    _onSuccess(ts, key, tsdata, forceNowDatapoint) {
       if (tsdata !== null) {
         const client = cv.io.BackendConnections.getClient();
         // never convert influx data
