@@ -17,9 +17,9 @@
  *
  */
 /**
- * Only for demo configs, load chart data directly from a json file or s generator
+ *
  */
-qx.Class.define('cv.io.timeseries.DemoSource', {
+qx.Class.define('cv.io.timeseries.IoBrokerSource', {
   extend: cv.io.timeseries.AbstractTimeSeriesSource,
 
   /*
@@ -28,29 +28,12 @@ qx.Class.define('cv.io.timeseries.DemoSource', {
   ***********************************************
   */
   members: {
-    _client: null,
-    _src: null,
+    async fetch(start, end, series, offset, options) {
+      const client = cv.io.BackendConnections.getClientByType('iobroker');
+      const timeRange = this.getTimeRange(start, end);
+      const config = this.getConfig();
 
-    _init() {
-      this._client = cv.io.BackendConnections.getClientByType('mockup');
-      this._src = this._url.split('://').pop().replace('@', ':');
-      this._baseRequestConfig = {
-        url: '',
-        proxy: false,
-        options: {}
-      };
-    },
-
-    getRequestConfig(start, end, series, offset) {
-      const config = this._baseRequestConfig;
-      config.url = this._client.getResourcePath('charts', {
-        src: this._src,
-        start,
-        end,
-        series,
-        offset
-      });
-      return config;
+      return client.fetchDiagramData(config.name, timeRange.start.getTime(), timeRange.end.getTime());
     }
   }
 });

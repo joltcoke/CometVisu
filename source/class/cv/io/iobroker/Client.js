@@ -123,6 +123,16 @@ qx.Class.define('cv.io.iobroker.Client', {
       this.__subscribedAddresses = addresses;
     },
 
+    __serverGetHistory(address, start, end) {
+      return this.__send_message('getHistory', address, {
+        start: start,
+        end: end,
+        count: 10000,
+        aggregate: 'average',
+        ignoreNull: true,
+      });
+    },
+
     __serverGetStates(addresses) {
       return this.__send_message('getStates', addresses);
     },
@@ -336,6 +346,16 @@ qx.Class.define('cv.io.iobroker.Client', {
      * @param data {var}
      */
     processChartsData(data) {},
+
+    async fetchDiagramData(address, start, end, arg2, arg3, arg4, arg5) {
+      if (!this.isConnected()) {
+        return; 
+      }
+
+      const result = await this.__serverGetHistory(address, start, end);
+
+      return result[1].filter(entry => (entry.val !== null)).map(entry => ([entry.ts, entry.val]));
+    },
 
     /**
      * This function sends a value
