@@ -126,7 +126,7 @@ qx.Class.define('cv.io.iobroker.Client', {
     },
 
     __serverGetHistory(address, start, end) {
-      return this.__send_message('getHistory', address, {
+      return this.__sendMessageResponse('getHistory', address, {
         start: start,
         end: end,
         count: 10000,
