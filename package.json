@@ -54,7 +54,7 @@
     "@types/d3": "^7.4.3",
     "chmodr": "^2.0.2",
     "deasync": "^0.1.31",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "eslint": "^10.3.0",
     "eslint-plugin-custom-elements": "^0.0.8",
     "eslint-plugin-jasmine": "^4.2.2",
