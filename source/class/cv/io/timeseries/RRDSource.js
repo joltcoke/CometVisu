@@ -42,8 +42,10 @@ qx.Class.define('cv.io.timeseries.RRDSource', {
       this._defaultFunc = 'AVERAGE';
       if (resourceConf) {
         let fileName = resourceConf.name;
+        const client = cv.io.BackendConnections.getClient();
+        const baseUrl = client ? client.getResourcePath('rrd') : '/cgi-bin/rrdfetch';
         this._baseRequestConfig = {
-          url: `/cgi-bin/rrdfetch?rrd=${fileName}.rrd`,
+          url: `${baseUrl}?rrd=${fileName}.rrd`,
           proxy: false,
           options: {}
         };
