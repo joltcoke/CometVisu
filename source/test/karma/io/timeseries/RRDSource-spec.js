@@ -54,96 +54,48 @@ describe('testing cv.io.timeseries.RRDSource', () => {
   });
 
   describe('_init (no client)', () => {
-    it('should fall back to /cgi-bin/rrdfetch when no client is available', () => {
+    it('should store fileName from resource config', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
 
-      expect(instance._baseRequestConfig).toBeDefined();
-      expect(instance._baseRequestConfig.url).toContain('/cgi-bin/rrdfetch');
-      expect(instance._baseRequestConfig.url).toContain('rrd=myfile.rrd');
-      expect(instance._baseRequestConfig.proxy).toBe(false);
+      expect(instance._fileName).toBe('myfile');
+      expect(instance._params).toBeDefined();
     });
 
     it('should add default resolution when not specified', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
 
-      expect(instance._baseRequestConfig.url).toContain('res=300');
+      expect(instance._params.res).toBe(300);
     });
 
     it('should add default ds function when not specified', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
 
-      expect(instance._baseRequestConfig.url).toContain('ds=AVERAGE');
+      expect(instance._params.ds).toBe('AVERAGE');
     });
 
     it('should use custom resolution from params', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile?res=600', mockChart);
 
-      expect(instance._baseRequestConfig.url).toContain('res=600');
-      expect(instance._baseRequestConfig.url).not.toContain('res=300');
+      expect(instance._params.res).toBe('600');
     });
 
     it('should use custom ds function from params', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile?ds=MAX', mockChart);
 
-      expect(instance._baseRequestConfig.url).toContain('ds=MAX');
-      expect(instance._baseRequestConfig.url).not.toContain('ds=AVERAGE');
+      expect(instance._params.ds).toBe('MAX');
     });
 
     it('should handle invalid URL gracefully', () => {
       instance = new cv.io.timeseries.RRDSource('invalid://url', mockChart);
 
-      expect(instance._baseRequestConfig.url).toBe('');
-      expect(instance._baseRequestConfig.proxy).toBe(false);
+      expect(instance._fileName).toBe('');
+      expect(instance._params).toEqual({});
     });
 
     it('should initialize DateFormat', () => {
       instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
 
       expect(instance._timeFormat).toBeDefined();
-    });
-  });
-
-  describe('_init (with client)', () => {
-    it('should use client.getResourcePath("rrd") when a client is available', () => {
-      cv.io.BackendConnections.getClient = () => ({
-        getResourcePath: (name) => {
-          if (name === 'rrd') {
-            return '/proxy/cometvisutest/cgi-bin/rrdfetch';
-          }
-          return '/cgi-bin/rrdfetch';
-        }
-      });
-
-      instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
-
-      expect(instance._baseRequestConfig.url).toContain('/proxy/cometvisutest/cgi-bin/rrdfetch');
-      expect(instance._baseRequestConfig.url).toMatch(/^\/proxy\/cometvisutest\/cgi-bin\/rrdfetch\?/);
-      expect(instance._baseRequestConfig.url).toContain('rrd=myfile.rrd');
-    });
-
-    it('should still add params when using client URL', () => {
-      cv.io.BackendConnections.getClient = () => ({
-        getResourcePath: (name) => {
-          return '/custom/path/rrdfetch';
-        }
-      });
-
-      instance = new cv.io.timeseries.RRDSource('rrd://myfile?res=900', mockChart);
-
-      expect(instance._baseRequestConfig.url).toContain('/custom/path/rrdfetch');
-      expect(instance._baseRequestConfig.url).toContain('res=900');
-    });
-
-    it('should work with baseURL that has a trailing slash', () => {
-      cv.io.BackendConnections.getClient = () => ({
-        getResourcePath: (name) => {
-          return '/proxy/test/cgi-bin/rrdfetch';
-        }
-      });
-
-      instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
-
-      expect(instance._baseRequestConfig.url).toMatch(/^\/proxy\/test\/cgi-bin\/rrdfetch\?/);
     });
   });
 
@@ -157,6 +109,8 @@ describe('testing cv.io.timeseries.RRDSource', () => {
 
       expect(config.url).toBeDefined();
       expect(config.url).toContain('/cgi-bin/rrdfetch');
+      expect(config.proxy).toBe(false);
+      expect(config.options).toEqual({});
     });
 
     it('should add start and end to URL', () => {
@@ -200,6 +154,51 @@ describe('testing cv.io.timeseries.RRDSource', () => {
 
       expect(config.url).toContain('res=600');
       expect(config.url).toContain('ds=MAX');
+    });
+
+    it('should use client.getResourcePath("rrd") at call time when a client is available', () => {
+      cv.io.BackendConnections.getClient = () => ({
+        getResourcePath: (name) => {
+          if (name === 'rrd') {
+            return '/proxy/cometvisutest/cgi-bin/rrdfetch';
+          }
+          return '/cgi-bin/rrdfetch';
+        }
+      });
+
+      instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
+      const config = instance.getRequestConfig('end-1day', 'now', 'day', 0);
+
+      expect(config.url).toContain('/proxy/cometvisutest/cgi-bin/rrdfetch');
+      expect(config.url).toMatch(/^\/proxy\/cometvisutest\/cgi-bin\/rrdfetch\?/);
+      expect(config.url).toContain('rrd=myfile.rrd');
+    });
+
+    it('should reflect the current client URL even when it changes after construction', () => {
+      let baseURL = '/initial/path/rrdfetch';
+      cv.io.BackendConnections.getClient = () => ({
+        getResourcePath: () => baseURL
+      });
+
+      instance = new cv.io.timeseries.RRDSource('rrd://myfile', mockChart);
+
+      // Simulate login response updating the backend.baseURL
+      baseURL = '/proxy/visugit/cgi-bin/rrdfetch';
+      const config = instance.getRequestConfig('end-1day', 'now', 'day', 0);
+
+      expect(config.url).toContain('/proxy/visugit/cgi-bin/rrdfetch');
+    });
+
+    it('should still add params when using client URL', () => {
+      cv.io.BackendConnections.getClient = () => ({
+        getResourcePath: () => '/custom/path/rrdfetch'
+      });
+
+      instance = new cv.io.timeseries.RRDSource('rrd://myfile?res=900', mockChart);
+      const config = instance.getRequestConfig('end-1day', 'now', 'day', 0);
+
+      expect(config.url).toContain('/custom/path/rrdfetch');
+      expect(config.url).toContain('res=900');
     });
   });
 
