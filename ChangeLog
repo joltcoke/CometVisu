@@ -3,6 +3,26 @@
 1.0.0
 =====
 
+### v1.0.0-RC2
+
+- [#1473](https://github.com/CometVisu/CometVisu/pull/1473) Fix resource access (@ChristianMayer)
+- [#1472](https://github.com/CometVisu/CometVisu/pull/1472) Allow RRDs to be placed at different URLs as well (@ChristianMayer)
+- [#1470](https://github.com/CometVisu/CometVisu/pull/1470) Fix connection loss when browser tab is not focused (@ChristianMayer)
+- [#1471](https://github.com/CometVisu/CometVisu/pull/1471) build(deps-dev): bump engine.io from 6.6.8 to 6.6.9 (@dependabot[bot])
+- [#1468](https://github.com/CometVisu/CometVisu/pull/1468) build(deps-dev): bump esbuild from 0.28.0 to 0.28.1 (@dependabot[bot])
+- [#1469](https://github.com/CometVisu/CometVisu/pull/1469) build(deps-dev): bump form-data from 4.0.5 to 4.0.6 (@dependabot[bot])
+- [#1466](https://github.com/CometVisu/CometVisu/pull/1466) build(deps): bump fast-uri from 3.1.2 to 3.1.4 (@dependabot[bot])
+- [#1465](https://github.com/CometVisu/CometVisu/pull/1465) build(deps): bump immutable from 4.3.8 to 4.3.9 (@dependabot[bot])
+- [#1464](https://github.com/CometVisu/CometVisu/pull/1464) build(deps): bump body-parser from 1.20.5 to 1.20.6 (@dependabot[bot])
+- [#1463](https://github.com/CometVisu/CometVisu/pull/1463) build(deps-dev): bump sharp from 0.34.5 to 0.35.0 (@dependabot[bot])
+- [#1462](https://github.com/CometVisu/CometVisu/pull/1462) fix: add selector for tile structure to blur background (@peuter)
+- [#1461](https://github.com/CometVisu/CometVisu/pull/1461) fix: guard against missing #centerContainer DOM element (@ChristianMayer)
+- [#1459](https://github.com/CometVisu/CometVisu/pull/1459) Fix debug message noise (@ChristianMayer)
+- [#1457](https://github.com/CometVisu/CometVisu/pull/1457) Serialize docs deploy workflow runs to prevent Pages deploy timeouts (@Copilot)
+- [#1454](https://github.com/CometVisu/CometVisu/pull/1454) Enhance release (@ChristianMayer)
+- [#1456](https://github.com/CometVisu/CometVisu/pull/1456) fix: handle backend error responses (@ChristianMayer)
+- [#1455](https://github.com/CometVisu/CometVisu/pull/1455) fix: improve handling of non existing custom_visu_config.xsd (@peuter)
+
 ### v1.0.0-RC1
 
 - [#1453](https://github.com/CometVisu/CometVisu/pull/1453) Merge develop into master for 1.0.0-beta1 (@ChristianMayer)
