@@ -41,25 +41,6 @@ qx.Class.define('cv.io.iobroker.Client', {
 
   /*
   ***********************************************
-    PROPERTIES
-  ***********************************************
-  */
-  properties: {
-    connected: {
-      check: 'Boolean',
-      init: false,
-      event: 'changeConnected'
-    },
-
-    server: {
-      check: 'String',
-      nullable: true,
-      event: 'changedServer'
-    }
-  },
-
-  /*
-  ***********************************************
     MEMBERS
   ***********************************************
   */
@@ -139,17 +120,41 @@ qx.Class.define('cv.io.iobroker.Client', {
 
     async __subscribeStates() {
       if ((!this.isConnected()) || (!this.__subscribedAddresses.length)) {
-        return; 
+        return;
       }
 
-      this.__serverSubscribeStates(this.__subscribedAddresses);
+      await this.__subscribeAddresses(this.__subscribedAddresses);
+    },
 
-      const states = await this.__serverGetStates(this.__subscribedAddresses);
+    /**
+     * Subscribe to the given addresses and publish their current states. ioBrokers
+     * subscribeStates adds to the already subscribed patterns and ignores duplicates,
+     * so this can be called incrementally.
+     * @param addresses {Array} addresses to subscribe to
+     */
+    async __subscribeAddresses(addresses) {
+      this.__serverSubscribeStates(addresses);
+
+      let response;
+      try {
+        response = await this.__serverGetStates(addresses);
+      } catch (e) {
+        this.error('getStates request failed:', e.message || e);
+        return;
+      }
+
+      // the ioBroker socket api answers with the arguments of its (error, states) callback
+      const [error, states] = response || [];
+      if (error) {
+        this.error('getStates failed:', error);
+        return;
+      }
+
       let newStates = {};
 
-      for (let id in states[1]) {
-        if (states[1][id]) {
-          newStates[id] = states[1][id].val; 
+      for (let id in states) {
+        if (states[id]) {
+          newStates[id] = states[id].val;
         }
       }
 
@@ -168,7 +173,8 @@ qx.Class.define('cv.io.iobroker.Client', {
       return new Promise((resolve, reject) => {
         let request = {
           id: this.__nextMessageId++,
-          resolve: resolve
+          resolve: resolve,
+          reject: reject
         };
   
         this.__pendingRequests.push(request);
@@ -279,8 +285,13 @@ qx.Class.define('cv.io.iobroker.Client', {
                 case '___ready___':
                   this.setConnected(true);
 
+                  // the server subscriptions belong to the connection that just went away, so
+                  // everything known so far has to be subscribed again. On the very first
+                  // connect there is nothing yet and __subscribeStates() returns immediately.
+                  this.__subscribeStates();
+
                   if (callback) {
-                    callback.call(context); 
+                    callback.call(context);
                   }
                   break;
                 case '___setup___': /* Fake for socket.io compatibility */
@@ -334,6 +345,20 @@ qx.Class.define('cv.io.iobroker.Client', {
       }
     },
 
+    /**
+     * Reject all requests that are still waiting for a response. Without this they would
+     * never settle, as the answer can only arrive over the connection that is gone.
+     * @param reason {String} why the requests cannot be answered anymore
+     */
+    __rejectPendingRequests(reason) {
+      const pending = this.__pendingRequests;
+      this.__pendingRequests = [];
+
+      for (const request of pending) {
+        request.reject(new Error(reason));
+      }
+    },
+
     __closeConnection(closeConnection = true) {
       if (this.isConnected()) {
         if (this.__pingTimer) {
@@ -348,6 +373,8 @@ qx.Class.define('cv.io.iobroker.Client', {
         this.setConnected(false);
         this.__connection = null;
       }
+
+      this.__rejectPendingRequests('connection to ' + this._backendUrl + ' closed');
     },
 
     /**
@@ -364,6 +391,26 @@ qx.Class.define('cv.io.iobroker.Client', {
     },
 
     /**
+     * Add a single subscription
+     * @param address {String}
+     */
+    addSubscription(address) {
+      if (!this.__subscribedAddresses) {
+        this.__subscribedAddresses = [address];
+      } else if (this.__subscribedAddresses.includes(address)) {
+        return;
+      } else {
+        this.__subscribedAddresses.push(address);
+      }
+
+      if (this.isConnected()) {
+        // the connection is already established, subscribe this address right away,
+        // otherwise it would not receive any updates until the next subscribe() call
+        this.__subscribeAddresses([address]);
+      }
+    },
+
+    /**
      * This function starts the communication by a login and then runs the
      * ongoing communication task
      *
@@ -377,6 +424,16 @@ qx.Class.define('cv.io.iobroker.Client', {
     async login(loginOnly, credentials, callback, context) {
       this.__credentials = credentials;
       this.__initiateConnection(callback, context);
+    },
+
+    /**
+     * Client is able to authorize a request, by knowing the credentials.
+     * The credentials are part of the backends connection URL, they cannot be
+     * applied to an arbitrary request, so this client cannot authorize one.
+     * @return {Boolean}
+     */
+    canAuthorize() {
+      return false;
     },
 
     /**
