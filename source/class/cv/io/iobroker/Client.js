@@ -110,6 +110,44 @@ qx.Class.define('cv.io.iobroker.Client', {
       return this.__sendMessageResponse('getStates', addresses);
     },
 
+    /**
+     * Read the recorded history of a state. This needs one of the ioBroker history
+     * adapters (history, sql, influxdb) to be enabled for that state.
+     * @param address {String} state id
+     * @param start {Date} beginning of the time range
+     * @param end {Date} end of the time range
+     * @param options {Map?} additional getHistory options, e.g. count, aggregate or step
+     * @return {Promise<Array>} the recorded entries, each with a "ts" and a "val"
+     */
+    async getHistory(address, start, end, options) {
+      if (!this.isConnected()) {
+        throw new Error('not connected to ' + this._backendUrl);
+      }
+
+      const response = await this.__sendMessageResponse(
+        'getHistory',
+        address,
+        Object.assign(
+          {
+            start: start.getTime(),
+            end: end.getTime(),
+            count: 10000,
+            ignoreNull: true
+          },
+          // no aggregate default here, it would override what the caller deliberately left out
+          options || {}
+        )
+      );
+
+      // the ioBroker socket api answers with the arguments of its (error, result) callback
+      const [error, result] = response || [];
+      if (error) {
+        throw new Error('getHistory for ' + address + ' failed: ' + error);
+      }
+
+      return result || [];
+    },
+
     __serverSetState(address, value) {
       this.__sendMessage('setState', address, value);
     },
@@ -449,19 +487,26 @@ qx.Class.define('cv.io.iobroker.Client', {
      * @param params {Map?} optional data needed to generate the resource path
      * @return {String|null} relative path to the resource, returns `null` when the backend does not provide that resource
      */
-    getResourcePath(name, params) {},
+    getResourcePath(name, params) {
+      // this backend provides none of them, the callers check for null explicitly
+      return null;
+    },
 
     /**
      * This client provides an own processor for charts data
      * @return {Boolean}
      */
-    hasCustomChartsDataProcessor() {},
+    hasCustomChartsDataProcessor() {
+      return false;
+    },
 
     /**
      * For custom backend charts data some processing might be done to convert it in a format the CometVisu can handle
      * @param data {var}
      */
-    processChartsData(data) {},
+    processChartsData(data) {
+      return data;
+    },
 
     /**
      * This function sends a value

@@ -2385,6 +2385,7 @@
       <xsd:element name="label" type="label" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="axis" type="axis" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="rrd" type="rrd" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="iobroker" type="iobroker" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="influx" type="influx" minOccurs="0" maxOccurs="unbounded"/>
     </xsd:sequence>
     <xsd:attribute name="width" type="dimension" use="optional">
@@ -2488,6 +2489,7 @@
       <xsd:element name="label" type="label" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="axis" type="axis" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="rrd" type="rrd" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="iobroker" type="iobroker" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="influx" type="influx" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="address" type="address" minOccurs="0" maxOccurs="unbounded"/>
     </xsd:sequence>
@@ -2964,6 +2966,80 @@
             <xsd:documentation xml:lang="de">Legt die Anzahl der Nachkommastellen fest, die in der y-Achsenbeschriftung bzw. im Tooltip angezeigt werden</xsd:documentation>
           </xsd:annotation>
         </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="iobroker">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="en">Time series of an ioBroker state. The content is the state id, e.g. knx.0.Floor.Room.Temperature. Requires one of the ioBroker history adapters (history, sql, influxdb) to be enabled for that state.</xsd:documentation>
+      <xsd:documentation xml:lang="de">Zeitreihe eines ioBroker Datenpunktes. Der Inhalt ist die State-ID, z.B. knx.0.Floor.Room.Temperature. Erfordert einen aktivierten ioBroker History-Adapter (history, sql, influxdb) für diesen Datenpunkt.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="backend" type="xsd:string" use="optional">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="en">Name of the backend connection the history is read from. Defaults to the default backend connection.</xsd:documentation>
+            <xsd:documentation xml:lang="de">Name der Backend-Verbindung, aus der die Historie gelesen wird. Standard ist die Standard-Backend-Verbindung.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="instance" type="xsd:string" use="optional">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="en">Instance of the ioBroker history adapter that holds the data, e.g. sql.0. Without it ioBroker uses the instance configured on the state itself.</xsd:documentation>
+            <xsd:documentation xml:lang="de">Instanz des ioBroker History-Adapters, welcher die Daten enthält, z.B. sql.0. Ohne diese Angabe verwendet ioBroker die am Datenpunkt hinterlegte Instanz.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="yaxis" type="xsd:string" />
+        <xsd:attribute name="color" type="xsd:string" />
+        <xsd:attribute name="label" type="xsd:string" />
+        <xsd:attribute name="scaling" type="xsd:decimal" />
+        <xsd:attribute name="steps" type="xsd:boolean" />
+        <xsd:attribute name="fill" type="xsd:boolean" />
+        <xsd:attribute name="offset" type="xsd:integer" use="optional" />
+        <xsd:attribute name="resolution" type="xsd:integer" use="optional">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="en">Resolution in seconds. Sets the aggregation step of the ioBroker history request.</xsd:documentation>
+            <xsd:documentation xml:lang="de">Auflösung in Sekunden. Legt die Aggregations-Schrittweite der ioBroker History-Abfrage fest.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="consolidationFunction" use="optional" default="AVERAGE">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="en">How the values are aggregated per step by the ioBroker history adapter.</xsd:documentation>
+            <xsd:documentation xml:lang="de">Wie die Werte je Schritt vom ioBroker History-Adapter aggregiert werden.</xsd:documentation>
+          </xsd:annotation>
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:enumeration value="AVERAGE" />
+              <xsd:enumeration value="MIN" />
+              <xsd:enumeration value="MAX" />
+              <xsd:enumeration value="TOTAL" />
+              <xsd:enumeration value="COUNT" />
+              <xsd:enumeration value="INTEGRAL" />
+              <xsd:enumeration value="MINMAX" />
+              <xsd:enumeration value="NONE" />
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:attribute>
+        <xsd:attribute name="fillMissing" use="optional">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:enumeration value="previous" />
+              <xsd:enumeration value="linear" />
+              <xsd:enumeration value="none" />
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:attribute>
+        <xsd:attribute name="style" use="optional">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:enumeration value="lines" />
+              <xsd:enumeration value="bars" />
+              <xsd:enumeration value="points" />
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:attribute>
+        <xsd:attribute name="barWidth" type="xsd:integer" use="optional" />
+        <xsd:attribute ref="align" use="optional" />
       </xsd:extension>
     </xsd:simpleContent>
   </xsd:complexType>
