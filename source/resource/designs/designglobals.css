@@ -33,9 +33,25 @@ a, img {
  * Default height for all icons
  */
 .icon {
-  height: 2em;
-  width: 2em;
-  font-size: 1.55em;
+  /* The icons are glyphs of an icon font. width/height do not apply to a non replaced
+     inline element, so the element is made inline-block to keep the 2em x 1.9em box of
+     the surrounding text that the SVG icons had. All lengths here are relative to the
+     font-size of this rule.
+
+     The font-size is chosen so that the glyphs are drawn at the size of the artwork of
+     those SVG icons, which did not fill their box. The icon font normalizes all glyphs
+     to the em box while the SVG artwork did not, so this can only match on average.
+
+     The font has an ascent of ~0.995em and no descent, so the glyph sits at the top of
+     the line box. line-height = height - 0.034em moves the baseline down far enough to
+     center the drawn glyph in the box, like the SVG icons were centered. */
+  display: inline-block;
+  font-size: 1.39em;
+  width: 1.439em;
+  height: 1.367em;
+  line-height: 1.333em;
+  text-align: center;
+  vertical-align: middle;
 }
 .tree-icon {
   height: 20px;
