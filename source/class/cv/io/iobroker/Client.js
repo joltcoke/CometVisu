@@ -53,6 +53,9 @@ qx.Class.define('cv.io.iobroker.Client', {
     __credentials: null,
     __pingTimer: null,
     __pureWebsocket: true,
+    __reconnectTimer: null,
+    __reconnectAttempt: 0,
+    __terminated: false,
 
     /**
      * Returns the current backend configuration
@@ -260,6 +263,13 @@ qx.Class.define('cv.io.iobroker.Client', {
     },
 
     __initiateConnection(callback = null, context = null) {
+      if (this.__connection) {
+        // never leave a second socket behind, its close handler would reject the
+        // pending requests of the new one
+        this.__closeQuietly();
+      }
+      this.__terminated = false;
+
       /**
        * @param param
        */
@@ -302,15 +312,27 @@ qx.Class.define('cv.io.iobroker.Client', {
 
         // FIXME: Implement proper query param patching of user/pass
         this.__connection = new window.WebSocket(`${this._backendUrl.protocol}//${this._backendUrl.host}${path}?${queryString}`);
+        const socket = this.__connection;
 
-        this.__connection.onerror = event => {  
+        socket.onerror = event => {
           this.debug('SOCK ERROR', event);
         };
-        this.__connection.onclose = event => {
+        socket.onclose = event => {
           this.debug('SOCK CLOSE', event);
+          if (this.__connection !== socket) {
+            // a previous socket that has already been replaced, it must not touch
+            // the connection that took its place
+            return;
+          }
+
           this.__closeConnection(false);
+
+          if (!this.__terminated) {
+            // the connection was not closed by us, get it back
+            this.__scheduleReconnect();
+          }
         };
-        this.__connection.onmessage = async event => {
+        socket.onmessage = async event => {
           const [type, id, name, args] = this.__decodeMessage(event.data);
 
           if (type === undefined) {
@@ -321,6 +343,7 @@ qx.Class.define('cv.io.iobroker.Client', {
             case 0: /* MESSAGE */
               switch (name) {
                 case '___ready___':
+                  this.__cancelReconnect();
                   this.setConnected(true);
 
                   // the server subscriptions belong to the connection that just went away, so
@@ -534,9 +557,72 @@ qx.Class.define('cv.io.iobroker.Client', {
      * Restart the connection
      * @param full
      */
+    /**
+     * Re-establish the connection. Every reconnect is a full one, the server side
+     * subscriptions belong to the connection that was lost and are renewed as soon as
+     * the new one is ready.
+     * @param full {Boolean?} unused, kept for the cv.io.IClient signature
+     */
     restart(full) {
-      this.debug('FIXME: RESTART', full); // This needs proper retry logic
+      this.__cancelReconnect();
+      this.__closeQuietly();
+      this.__reconnect();
+    },
+
+    /**
+     * Try to connect, as long as the application is active. While it is inactive the
+     * connections are closed on purpose, reconnecting then would just fight that.
+     */
+    __reconnect() {
+      this.__reconnectTimer = null;
+
+      if (this.isConnected()) {
+        return;
+      }
+
+      const app = qx.core.Init.getApplication();
+      if (app && !app.isActive()) {
+        this.debug('application is inactive, not reconnecting');
+
+        return;
+      }
+
+      this.__reconnectAttempt++;
+      this.debug('connection attempt ' + this.__reconnectAttempt);
       this.__initiateConnection();
+      // the attempt is asynchronous, schedule the next one in case it does not succeed
+      this.__scheduleReconnect();
+    },
+
+    /**
+     * Schedule the next connection attempt, backing off from 1s up to 60s.
+     */
+    __scheduleReconnect() {
+      if (this.__reconnectTimer || this.__terminated) {
+        return;
+      }
+
+      const delay = Math.min(1000 * Math.pow(2, this.__reconnectAttempt), 60000);
+      this.debug('next connection attempt in ' + delay / 1000 + 's');
+      this.__reconnectTimer = setTimeout(() => this.__reconnect(), delay);
+    },
+
+    __cancelReconnect() {
+      if (this.__reconnectTimer) {
+        clearTimeout(this.__reconnectTimer);
+        this.__reconnectTimer = null;
+      }
+      this.__reconnectAttempt = 0;
+    },
+
+    /**
+     * Close the connection without letting the close handler schedule a reconnect.
+     */
+    __closeQuietly() {
+      const wasTerminated = this.__terminated;
+      this.__terminated = true;
+      this.__closeConnection();
+      this.__terminated = wasTerminated;
     },
 
     /**
@@ -562,6 +648,8 @@ qx.Class.define('cv.io.iobroker.Client', {
     showError(type, message, args) {},
 
     terminate() {
+      this.__terminated = true;
+      this.__cancelReconnect();
       this.__closeConnection();
     },
 
