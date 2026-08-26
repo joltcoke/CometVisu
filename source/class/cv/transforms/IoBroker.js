@@ -86,14 +86,15 @@ qx.Class.define('cv.transforms.IoBroker', {
           en: 'off on switch'
         },
         encode(value) {
-          return ((value === 1) || (value === '1')) ? 'true' : 'false';
+          // ioBroker switches are boolean datapoints, a string would be the wrong type
+          return value === 1 || value === '1' || value === true || value === 'true';
         },
         decode(value) {
           if (cv.transforms.IoBroker.isUndefined(value)) {
             return 0;
           }
 
-          return (value === true) ? 1 : 0;
+          return value === true || value === 1 || value === '1' || value === 'true' ? 1 : 0;
         }
       }
     });
