@@ -293,6 +293,7 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
         source.setHistoryOptions({
           aggregate: ts.cFunc,
           instance: ts.instance || undefined,
+          fill: ts.fillTs,
           step: Number.isFinite(res) && res > 0 ? res * 1000 : undefined
         });
         source
@@ -413,9 +414,11 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
     _scaleTsData(ts, tsdata) {
       const millisOffset = Number.isFinite(ts.offset) ? ts.offset * 1000 : 0;
 
+      // a null value marks a gap in the data and has to stay one, parseFloat would
+      // turn it into NaN and the graph would not be interrupted there
       return ts.tsType === 'rrd'
-        ? tsdata.map(x => [x[0] + millisOffset, parseFloat(x[1][ts.dsIndex]) * ts.scaling])
-        : tsdata.map(x => [x[0] + millisOffset, parseFloat(x[1]) * ts.scaling]);
+        ? tsdata.map(x => [x[0] + millisOffset, x[1] === null ? null : parseFloat(x[1][ts.dsIndex]) * ts.scaling])
+        : tsdata.map(x => [x[0] + millisOffset, x[1] === null ? null : parseFloat(x[1]) * ts.scaling]);
     },
 
     /**

@@ -118,6 +118,16 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
           delete options.step;
         }
       }
+      // fillMissing decides what happens with the gaps the recording adapter marks with
+      // null values, e.g. the ones written when it is started or stopped. ioBroker either
+      // includes them (false) or replaces them with the last known value (true), and an
+      // included null makes the whole aggregation interval around it null:
+      //   none              -> included, so an interval containing a gap becomes a gap
+      //   previous, linear  -> replaced, the graph is drawn through the gap
+      if (options.fill) {
+        options.ignoreNull = options.fill !== 'none';
+        delete options.fill;
+      }
       if (options.aggregate === 'none') {
         // "none" has to be sent, leaving it out lets ioBroker fall back to its own default.
         // Without aggregation there are no intervals, so asking for a step would only
@@ -317,7 +327,14 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
         return [];
       }
 
-      return data.filter(entry => entry && entry.val !== null && entry.val !== undefined).map(entry => [entry.ts, entry.val]);
+      // a null marks a gap in the recording. Keeping it lets the graph show that gap,
+      // dropping it draws a line straight through, which is what "linear" asks for.
+      // With fillMissing="none" ioBroker returns them, otherwise they are already replaced.
+      const keepGaps = this._historyOptions && this._historyOptions.fill === 'none';
+
+      return data
+        .filter(entry => entry && (keepGaps || (entry.val !== null && entry.val !== undefined)))
+        .map(entry => [entry.ts, entry.val === undefined ? null : entry.val]);
     }
   }
 });
