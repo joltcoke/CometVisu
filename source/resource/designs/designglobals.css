@@ -640,7 +640,10 @@ button.ui-slider-handle {
   position: absolute;
   z-index: 100002;
   right: 1em;
-  top: -0.8em;
+  /* has to stay inside the popup: since "make popup scrollable on small screens" .popup
+     is a scroll container (overflow-y: auto) and clips everything reaching beyond its
+     edges. Before that the X was placed on the upper border with top: -0.8em. */
+  top: 0;
   width: 1.2em;
   text-align: center;
   -moz-border-radius: 4px; -webkit-border-radius: 4px; border-radius: 4px;
@@ -659,7 +662,9 @@ button.ui-slider-handle {
 
 .popup div {
   margin: 4px;
-  max-height: 60vh;
+  /* no max-height: since "make popup scrollable on small screens" .popup itself is
+     bounded by max-height: 100vh and scrolls when needed. An additional limit here only
+     made the content (e.g. diagrams) smaller than the popup containing it. */
 }
 
 .popup div.head {
