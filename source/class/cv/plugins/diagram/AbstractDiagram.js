@@ -179,6 +179,10 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
         axesNameIndex[elem.textContent] = retVal.axesnum;
       }, this);
 
+      // each backend gets the default of its own vocabulary, ioBroker uses the default
+      // of its history adapters
+      const defaultCFunc = { influx: 'MEAN', iobroker: 'MINMAX' };
+
       xmlElement.querySelectorAll('influx,rrd,iobroker').forEach(function (elem) {
         const src = elem.tagName === 'influx' ? elem.getAttribute('measurement') : elem.textContent;
         const steps = (elem.getAttribute('steps') || 'false') === 'true';
@@ -192,7 +196,7 @@ qx.Class.define('cv.plugins.diagram.AbstractDiagram', {
           steps: steps,
           fill: (elem.getAttribute('fill') || 'false') === 'true',
           scaling: parseFloat(elem.getAttribute('scaling')) || 1.0,
-          cFunc: elem.getAttribute('consolidationFunction') || (elem.tagName === 'influx' ? 'MEAN' : 'AVERAGE'),
+          cFunc: elem.getAttribute('consolidationFunction') || defaultCFunc[elem.tagName] || 'AVERAGE',
           fillTs: fillMissing === null ? (steps ? 'previous' : 'linear') : fillMissing,
           resol: parseInt(elem.getAttribute('resolution')),
           offset: parseInt(elem.getAttribute('offset')),

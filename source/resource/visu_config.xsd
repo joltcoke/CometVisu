@@ -3002,10 +3002,10 @@
             <xsd:documentation xml:lang="de">Auflösung in Sekunden. Legt die Aggregations-Schrittweite der ioBroker History-Abfrage fest.</xsd:documentation>
           </xsd:annotation>
         </xsd:attribute>
-        <xsd:attribute name="consolidationFunction" use="optional" default="AVERAGE">
+        <xsd:attribute name="consolidationFunction" use="optional" default="MINMAX">
           <xsd:annotation>
-            <xsd:documentation xml:lang="en">How the values are aggregated per step by the ioBroker history adapter.</xsd:documentation>
-            <xsd:documentation xml:lang="de">Wie die Werte je Schritt vom ioBroker History-Adapter aggregiert werden.</xsd:documentation>
+            <xsd:documentation xml:lang="en">How the values are aggregated per step by the ioBroker history adapter. Not every adapter implements all of them, NONE returns the stored values unaggregated.</xsd:documentation>
+            <xsd:documentation xml:lang="de">Wie die Werte je Schritt vom ioBroker History-Adapter aggregiert werden. Nicht jeder Adapter implementiert alle Verfahren, NONE liefert die gespeicherten Werte unaggregiert.</xsd:documentation>
           </xsd:annotation>
           <xsd:simpleType>
             <xsd:restriction base="xsd:string">
