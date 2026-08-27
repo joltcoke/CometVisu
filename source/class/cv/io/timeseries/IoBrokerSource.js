@@ -362,8 +362,11 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
         return Number(text);
       }
 
-      const wahr = ['true', 'yes', 'on', 'ja', 'an', 'ein'];
-      const falsch = ['false', 'no', 'off', 'nein', 'aus'];
+      // The words come from the ebus datapoints, which spell out their value
+      // lists: PhaseOrder is { error: 0, ok: 7 }, PhaseStatus is
+      // { missing: 0, present: 1 } for each of the three phases.
+      const wahr = ['true', 'yes', 'on', 'ja', 'an', 'ein', 'ok', 'present'];
+      const falsch = ['false', 'no', 'off', 'nein', 'aus', 'error', 'missing'];
       const klein = text.toLowerCase();
       if (wahr.includes(klein)) {
         return 1;
