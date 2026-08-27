@@ -59,6 +59,7 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
   */
   members: {
     _historyOptions: null,
+    __unbekannt: false,
 
     /**
      * Options for the next getHistory requests, e.g. aggregate and step. They are merged
@@ -334,7 +335,49 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
 
       return data
         .filter(entry => entry && (keepGaps || (entry.val !== null && entry.val !== undefined)))
-        .map(entry => [entry.ts, entry.val === undefined ? null : entry.val]);
+        .map(entry => [entry.ts, this._toNumber(entry.val)]);
+    },
+
+    /**
+     * A chart can only draw numbers, while an ioBroker datapoint may deliver a boolean or
+     * a string. Booleans and the usual textual spellings of them are converted, everything
+     * else that is not a number becomes a gap, which is still readable in the graph, while
+     * a NaN from parseFloat would not be.
+     * @param value {var} value of a history entry
+     * @return {Number|null}
+     */
+    _toNumber(value) {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        return value;
+      }
+      if (typeof value === 'boolean') {
+        return value ? 1 : 0;
+      }
+
+      const text = ('' + value).trim();
+      if (text !== '' && !isNaN(Number(text))) {
+        return Number(text);
+      }
+
+      const wahr = ['true', 'yes', 'on', 'ja', 'an', 'ein'];
+      const falsch = ['false', 'no', 'off', 'nein', 'aus'];
+      const klein = text.toLowerCase();
+      if (wahr.includes(klein)) {
+        return 1;
+      }
+      if (falsch.includes(klein)) {
+        return 0;
+      }
+
+      if (!this.__unbekannt) {
+        this.__unbekannt = true;
+        this.error(`cannot draw the value "${text}" of ${this.getStateId()} in a chart, it is not a number`);
+      }
+
+      return null;
     }
   }
 });
