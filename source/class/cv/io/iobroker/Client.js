@@ -262,6 +262,24 @@ qx.Class.define('cv.io.iobroker.Client', {
       }
     },
 
+    /**
+     * Warn about characters the ioBroker ws query handling cannot transport
+     * reliably. The auth gate splits the query on & and = (and never decodes), and a
+     * later step decodes it, so & = # break the query structurally and % + and
+     * whitespace make the two steps disagree. The credential is still sent as is; this
+     * only surfaces why a login with such a character would fail.
+     * @param part {String} "username" or "password"
+     * @param value {String} the credential value
+     */
+    __warnAboutUnsupportedCredentials(part, value) {
+      if (typeof value === 'string' && /[&=#%+\s]/.test(value)) {
+        this.error(
+          'the ioBroker ' + part + ' contains a character (one of & = # % + or whitespace) that ' +
+            'the ws query cannot transport reliably, the login may fail'
+        );
+      }
+    },
+
     __initiateConnection(callback = null, context = null) {
       if (this.__connection) {
         // never leave a second socket behind, its close handler would reject the
@@ -291,27 +309,40 @@ qx.Class.define('cv.io.iobroker.Client', {
       };
 
       try {
-        let queryString = '';
+        // build the structural parameters with URLSearchParams, keeping whatever the
+        // backend url already carries
+        const query = new URLSearchParams(this._backendUrl.search);
         let path = '';
-        
+
         if (this.__pureWebsocket) {
-          queryString += `sid=${Date.now()}`;
+          query.set('sid', Date.now());
           path += '/';
         } else {
-          queryString += 'transport=websocket';
+          query.set('transport', 'websocket');
           path += '/socket.io/';
         }
 
-        if (this.__credentials.username) {
-          queryString += `&user=${this.__credentials.username}`; 
+        let queryString = query.toString();
+
+        // Append user and pass RAW, not url-encoded. The ioBroker ws authentication
+        // gate (getQuery() in @iobroker/socket-classes passportSocket.js, run during the
+        // upgrade) splits the query on & and = but never decodes it, so an encoded
+        // credential would be compared in its encoded form and rejected. Encoding would
+        // therefore break the login; characters the parser cannot represent at all are
+        // reported by __warnAboutUnsupportedCredentials() below.
+        const credentials = this.__credentials || {};
+        if (credentials.username) {
+          this.__warnAboutUnsupportedCredentials('username', credentials.username);
+          queryString += `&user=${credentials.username}`;
+        }
+        if (credentials.password) {
+          this.__warnAboutUnsupportedCredentials('password', credentials.password);
+          queryString += `&pass=${credentials.password}`;
         }
 
-        if (this.__credentials.password) {
-          queryString += `&pass=${this.__credentials.password}`; 
-        }
-
-        // FIXME: Implement proper query param patching of user/pass
-        this.__connection = new window.WebSocket(`${this._backendUrl.protocol}//${this._backendUrl.host}${path}?${queryString}`);
+        this.__connection = new window.WebSocket(
+          `${this._backendUrl.protocol}//${this._backendUrl.host}${path}?${queryString}`
+        );
         const socket = this.__connection;
 
         socket.onerror = event => {
