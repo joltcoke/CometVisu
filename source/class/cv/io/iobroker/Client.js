@@ -392,10 +392,17 @@ qx.Class.define('cv.io.iobroker.Client', {
                   }, args.pingInterval);
                   break;
                 case 'reauthenticate':
+                  // Credentials were rejected. Do not reconnect: ioBroker locks an
+                  // account out for up to an hour after a few failed attempts, so
+                  // retrying with the same (wrong) credentials would only make things
+                  // worse and could lock out the correct ones. Stop and report; the
+                  // user fixes the credentials and reloads.
+                  this.__terminated = true;
+                  this.__cancelReconnect();
                   onFailure({
                     errorMessage: 'Authentication failed!',
                     errorCode: 'login -> WebSocket(' + this._backendUrl + ')'
-                  });          
+                  });
                   break;
                 case 'stateChange':
                   if (args[1].ts === args[1].lc) {
