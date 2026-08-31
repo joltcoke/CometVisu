@@ -302,14 +302,20 @@ qx.Class.define('cv.io.timeseries.IoBrokerSource', {
       try {
         return await client.getHistory(this.getStateId(), timeRange.start, timeRange.end, options);
       } catch (e) {
-        if (client.isConnected()) {
+        const message = e && e.message ? e.message : '' + e;
+        // isConnected() can still report true while the socket is not OPEN yet (or already
+        // closing), in which case getHistory rejects with "not connected" instead of sending.
+        // Treat both as a transient connection problem and retry; only a real request failure
+        // (e.g. "getHistory ... failed") is surfaced.
+        const connectionProblem = !client.isConnected() || message.includes('not connected');
+        if (!connectionProblem) {
           // the request itself failed, retrying would not change that
           throw e;
         }
 
-        // the connection dropped while the request was in flight, it gets re-established
-        // automatically, so wait for it and give the request one more try
-        this.debug('connection lost during the history request, retrying after the reconnect');
+        // the connection was not ready (dropped in flight, or the socket not OPEN yet); it gets
+        // re-established automatically, so wait for it and give the request one more try
+        this.debug('connection not ready during the history request, retrying after the reconnect');
         await this._whenConnected(client);
 
         return client.getHistory(this.getStateId(), timeRange.start, timeRange.end, options);

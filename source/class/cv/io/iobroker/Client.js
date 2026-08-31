@@ -123,7 +123,9 @@ qx.Class.define('cv.io.iobroker.Client', {
      * @return {Promise<Array>} the recorded entries, each with a "ts" and a "val"
      */
     async getHistory(address, start, end, options) {
-      if (!this.isConnected()) {
+      if (!this.isConnected() || !this.__isSocketOpen()) {
+        // fail fast before reaching a send() on a socket that is not OPEN; the diagram source
+        // treats this as a transient disconnect and retries after the reconnect
         throw new Error('not connected to ' + this._backendUrl);
       }
 
@@ -202,7 +204,23 @@ qx.Class.define('cv.io.iobroker.Client', {
       this.update(newStates);
     },
 
+    /**
+     * Whether the underlying socket exists and is ready to send. WebSocket.send() throws an
+     * InvalidStateError when the socket is not OPEN (on Safari also while it is CLOSING or
+     * CLOSED, not only CONNECTING), so every send has to be guarded by this.
+     * @return {Boolean}
+     */
+    __isSocketOpen() {
+      return !!this.__connection && this.__connection.readyState === window.WebSocket.OPEN;
+    },
+
     __sendMessage(name, ...args) {
+      if (!this.__isSocketOpen()) {
+        // sending on a socket that is not OPEN would throw; drop the message instead, the
+        // caller state (e.g. subscriptions) is re-established on the next '___ready___'
+        this.debug('not sending "' + name + '", socket is not open');
+        return;
+      }
       if (this.__pureWebsocket) {
         this.__connection.send(JSON.stringify([3, this.__nextMessageId++, name, [...args]]));
       } else {
@@ -212,12 +230,19 @@ qx.Class.define('cv.io.iobroker.Client', {
 
     __sendMessageResponse(name, ...args) {
       return new Promise((resolve, reject) => {
+        if (!this.__isSocketOpen()) {
+          // sending now would throw an InvalidStateError; reject with the same message the
+          // connection guards use, so the caller can treat it as a transient disconnect
+          reject(new Error('not connected to ' + this._backendUrl));
+          return;
+        }
+
         let request = {
           id: this.__nextMessageId++,
           resolve: resolve,
           reject: reject
         };
-  
+
         this.__pendingRequests.push(request);
 
         if (this.__pureWebsocket) {
