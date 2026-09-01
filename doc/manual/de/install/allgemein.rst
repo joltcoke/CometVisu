@@ -65,8 +65,10 @@ der über WebSocket ansprechbar ist.
 ioBroker
 ~~~~~~~~
 
-Die Installation des "Web socket" Adapters in ioBroker ist nötig. Dieser Adapter
-wird der für den Datenaustausch verwendet.
+Die Installation des "Web socket" Adapters (``iobroker.ws``, mindestens Version
+5.0.2) in ioBroker ist nötig. Dieser Adapter wird für den Datenaustausch
+verwendet. Für die Anzeige von Diagrammen bzw. Verlaufsdaten wird zusätzlich der
+SQL-Adapter (``iobroker.sql``, mindestens Version 4.1.1) benötigt.
 
 Backend konfigurieren
 ~~~~~~~~~~~~~~~~~~~~~
