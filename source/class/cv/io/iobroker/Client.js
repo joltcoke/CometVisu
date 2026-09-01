@@ -318,7 +318,7 @@ qx.Class.define('cv.io.iobroker.Client', {
       try {
         // build the structural parameters with URLSearchParams, keeping whatever the
         // backend url already carries
-        const query = new URLSearchParams(this._backendUrl.search);
+        const query = new window.URLSearchParams(this._backendUrl.search);
         let path = '';
 
         if (this.__pureWebsocket) {
@@ -391,9 +391,19 @@ qx.Class.define('cv.io.iobroker.Client', {
                   }
                   break;
                 case '___setup___': /* Fake for socket.io compatibility */
-                  this.__pingTimer = setInterval(() => {
-                    this.__connection.send('2');
-                  }, args.pingInterval);
+                  {
+                    // honour the ping interval the socket.io backend sent, but only within a sane
+                    // range, so a malicious or broken server cannot turn this keepalive into a
+                    // busy loop
+                    let pingInterval = 25000; // engine.io default
+                    const requested = Number(args.pingInterval);
+                    if (requested >= 1000 && requested <= 300000) {
+                      pingInterval = requested;
+                    }
+                    this.__pingTimer = setInterval(() => {
+                      this.__connection.send('2');
+                    }, pingInterval);
+                  }
                   break;
                 case 'reauthenticate':
                   // Credentials were rejected. Do not reconnect: ioBroker locks an
