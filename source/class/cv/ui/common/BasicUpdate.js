@@ -82,7 +82,17 @@ qx.Mixin.define('cv.ui.common.BasicUpdate', {
      * against the parser of the installed sprintf-js, so such a change fails the tests. When that
      * happens, align this expression with the "placeholder" regex of the new version.
      */
-    PLACEHOLDER_REGEX: /%%|%(?:([1-9]\d*)\$|\(([^)]+)\))?(\+)?(0|'[^$])?(-)?(\d+)?(?:\.(\d+))?([b-gijosuxX])/g,
+    PLACEHOLDER_REGEX: /%%|%(?:([1-9]\d*)\$|\(([^)]+)\))?(\+)?(0|'[^$])?(-)?(\d+)?(?:\.(\d+))?([b-gijosuxX])/,
+
+    /**
+     * A fresh global regex for the placeholder syntax. A global regex keeps its own lastIndex, so a
+     * shared instance would make callers depend on each other's search progress.
+     *
+     * @return {RegExp} a copy of {@link cv.ui.common.BasicUpdate#PLACEHOLDER_REGEX} with the g flag
+     */
+    placeholderRegex() {
+      return new RegExp(cv.ui.common.BasicUpdate.PLACEHOLDER_REGEX.source, 'g');
+    },
 
     /**
      * Replace those placeholders of a format string whose value is still missing by a literal
@@ -98,8 +108,7 @@ qx.Mixin.define('cv.ui.common.BasicUpdate', {
      */
     replaceMissingFormatValues(format, values, placeholder) {
       const missing = [];
-      const regex = cv.ui.common.BasicUpdate.PLACEHOLDER_REGEX;
-      regex.lastIndex = 0;
+      const regex = cv.ui.common.BasicUpdate.placeholderRegex();
       let match = regex.exec(format);
       while (match !== null) {
         if (match[1] !== undefined && values[parseInt(match[1], 10)] === undefined) {
@@ -114,7 +123,7 @@ qx.Mixin.define('cv.ui.common.BasicUpdate', {
       const cache = cv.ui.common.BasicUpdate.__formatWithPlaceholders;
       const key = JSON.stringify([format, placeholder, missing]);
       if (cache[key] === undefined) {
-        cache[key] = format.replace(cv.ui.common.BasicUpdate.PLACEHOLDER_REGEX, (found, position) =>
+        cache[key] = format.replace(cv.ui.common.BasicUpdate.placeholderRegex(), (found, position) =>
           position !== undefined && missing.includes(position) ? placeholder : found
         );
       }

@@ -163,6 +163,22 @@ describe('testing the basic update mixin', function() {
     expect(replace(format, [format], '-')).toBe('- °C => - °C');
     expect(replace('%.1f °C', [format], '-')).toBe('%.1f °C');
   });
+  it('should hand out a fresh placeholder regex for every scan', function () {
+    // A global regex keeps its own lastIndex. Sharing one instance would make a scan that was left
+    // half way move the starting point of the next one.
+    var first = cv.ui.common.BasicUpdate.placeholderRegex();
+    var second = cv.ui.common.BasicUpdate.placeholderRegex();
+
+    expect(first).not.toBe(second);
+    expect(first.global).toBe(true);
+    expect(cv.ui.common.BasicUpdate.PLACEHOLDER_REGEX.global).toBe(false);
+
+    first.exec('%1$s %2$s');
+
+    expect(first.lastIndex).toBeGreaterThan(0);
+    expect(cv.ui.common.BasicUpdate.placeholderRegex().lastIndex).toBe(0);
+  });
+
   it('should recognize exactly the placeholders that sprintf-js recognizes', function () {
     // Our regex is a copy of the placeholder syntax of sprintf-js. This test compares it against
     // that library's own parser, so an update that changes the syntax fails here instead of making
@@ -218,8 +234,7 @@ describe('testing the basic update mixin', function() {
     // what our own regex finds, "%%" is a literal on both sides
     var placeholdersOfRegex = function (format) {
       var found = [];
-      var regex = cv.ui.common.BasicUpdate.PLACEHOLDER_REGEX;
-      regex.lastIndex = 0;
+      var regex = cv.ui.common.BasicUpdate.placeholderRegex();
       var match = regex.exec(format);
       while (match !== null) {
         if (match[0] !== '%%') {
