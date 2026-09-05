@@ -103,7 +103,9 @@ Verbindung zu ioBroker
 
     <cv-backend type="iobroker" uri="ws://iobroker-host:8084"/>
 
-Die ioBroker Instanz muss Websocket Verbindungen (Web socket Adapter) unterstützen, damit die CometVisu damit kommunizieren kann.
+Die Adresse zeigt auf einen ioBroker-Server mit Websocket-Schnittstelle: den Web-Adapter (``iobroker.web``) oder den
+"Web socket" Adapter (``iobroker.ws``). Die CometVisu lädt die passende Programmbibliothek von diesem Server, es spielt
+daher keine Rolle, welches Protokoll er dafür verwendet.
 Sofern die ioBroker Instanz Zugangsdaten benötigt, können diese über die ``username`` und ``password`` Attribute angegeben werden.
 
 

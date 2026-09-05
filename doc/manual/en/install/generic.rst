@@ -64,10 +64,12 @@ that can be contacted with WebSockets.
 ioBroker
 ~~~~~~~~
 
-The installation of the "Web socket" adapter (``iobroker.ws``, at least version
-5.0.2) is required. This adapter is used for data exchange. To display charts or
-history data, the SQL adapter (``iobroker.sql``, at least version 4.1.1) is
-additionally required.
+An ioBroker server with a socket interface is required for the data exchange:
+either the web adapter (``iobroker.web``) or the "Web socket" adapter
+(``iobroker.ws``, at least version 5.0.2). CometVisu loads the matching client
+library from that server, so it does not matter which protocol it uses. To
+display charts or history data, the SQL adapter (``iobroker.sql``, at least
+version 4.1.1) is additionally required.
 
 Backend configuration
 ~~~~~~~~~~~~~~~~~~~~~

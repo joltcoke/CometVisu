@@ -18,71 +18,110 @@
  */
 
 /**
- * Unit tests for cv.io.iobroker.Client. The WebSocket is replaced by a fake that lets the
- * test drive onopen / onmessage / onclose and capture what the client sends.
+ * Unit tests for cv.io.iobroker.Client. The socket client library that the backend would publish
+ * is replaced by a fake, so the test can drive the connection and capture what the client sends.
  */
 describe('testing cv.io.iobroker.Client', function () {
-  let origWebSocket;
   let sockets;
   let savedTestMode;
 
-  function FakeWebSocket(url) {
+  /**
+   * @param url {String} url the client connects to
+   * @param options {Map} options the client passes to the library
+   */
+  function FakeSocket(url, options) {
     this.url = url;
-    this.readyState = FakeWebSocket.CONNECTING;
-    this.sent = [];
-    this.onopen = null;
-    this.onmessage = null;
-    this.onclose = null;
-    this.onerror = null;
+    this.options = options;
+    this.connected = false;
+    this.destroyed = false;
+    this.handlers = {};
+    this.emitted = [];
     sockets.push(this);
   }
-  FakeWebSocket.CONNECTING = 0;
-  FakeWebSocket.OPEN = 1;
-  FakeWebSocket.CLOSING = 2;
-  FakeWebSocket.CLOSED = 3;
-  FakeWebSocket.prototype.send = function (data) {
-    this.sent.push(data);
+  FakeSocket.prototype.on = function (name, cb) {
+    this.handlers[name] = this.handlers[name] || [];
+    this.handlers[name].push(cb);
   };
-  FakeWebSocket.prototype.close = function () {
-    this.readyState = FakeWebSocket.CLOSED;
+  FakeSocket.prototype.off = function (name, cb) {
+    if (this.handlers[name]) {
+      this.handlers[name] = this.handlers[name].filter(entry => entry !== cb);
+    }
   };
+  FakeSocket.prototype.emit = function (name, ...args) {
+    const cb = typeof args[args.length - 1] === 'function' ? args.pop() : null;
+    this.emitted.push({ name: name, args: args, cb: cb });
+  };
+  FakeSocket.prototype.close = function () {
+    this.connected = false;
+  };
+  FakeSocket.prototype.destroy = function () {
+    this.destroyed = true;
+    this.connected = false;
+  };
+
   // test helpers
-  FakeWebSocket.prototype.open = function () {
-    this.readyState = FakeWebSocket.OPEN;
-    if (this.onopen) {
-      this.onopen({});
-    }
+  FakeSocket.prototype.fire = function (name, ...args) {
+    (this.handlers[name] || []).forEach(cb => cb(...args));
   };
-  FakeWebSocket.prototype.receive = function (data) {
-    if (this.onmessage) {
-      this.onmessage({ data: typeof data === 'string' ? data : JSON.stringify(data) });
-    }
+  FakeSocket.prototype.ready = function () {
+    this.connected = true;
+    this.fire('connect');
   };
-  FakeWebSocket.prototype.serverClose = function () {
-    this.readyState = FakeWebSocket.CLOSED;
-    if (this.onclose) {
-      this.onclose({});
+  FakeSocket.prototype.lastCall = function (name) {
+    for (let i = this.emitted.length - 1; i >= 0; i--) {
+      if (this.emitted[i].name === name) {
+        return this.emitted[i];
+      }
+    }
+    return null;
+  };
+  FakeSocket.prototype.answer = function (name, ...response) {
+    const call = this.lastCall(name);
+    if (call && call.cb) {
+      call.cb(...response);
     }
   };
 
+  /**
+   * @return {FakeSocket} the socket opened last
+   */
   function lastSocket() {
     return sockets[sockets.length - 1];
   }
 
+  /**
+   * @param url {String?} backend url, defaults to a local one
+   * @return {cv.io.iobroker.Client}
+   */
   function newClient(url) {
     return new cv.io.iobroker.Client('iobroker', url || 'ws://localhost:8083/');
   }
 
+  /**
+   * Start a client and let its connection become ready.
+   *
+   * @param credentials {Map?} credentials to log in with
+   * @return {Promise} resolves with the client and its socket
+   */
+  async function connectedClient(credentials) {
+    const client = newClient();
+    await client.login(false, credentials || {});
+    const sock = lastSocket();
+    sock.ready();
+    return { client: client, sock: sock };
+  }
+
   beforeEach(function () {
     sockets = [];
-    origWebSocket = window.WebSocket;
-    window.WebSocket = FakeWebSocket;
+    spyOn(cv.io.iobroker.SocketLibrary, 'load').and.resolveTo({
+      connect: (url, options) => new FakeSocket(url, options)
+    });
+
     savedTestMode = cv.Config.testMode;
     cv.Config.testMode = true;
   });
 
   afterEach(function () {
-    window.WebSocket = origWebSocket;
     cv.Config.testMode = savedTestMode;
   });
 
@@ -90,133 +129,140 @@ describe('testing cv.io.iobroker.Client', function () {
     expect(newClient().getType()).toEqual('iobroker');
   });
 
-  it('url-encodes the credentials into the websocket query', function () {
-    const client = newClient();
-    client.login(false, { username: 'a b', password: 'p&q' });
-    const url = lastSocket().url;
-    expect(url).toContain('user=' + encodeURIComponent('a b')); // a%20b
-    expect(url).toContain('pass=' + encodeURIComponent('p&q')); // p%26q
+  it('derives the origin of the library from the backend url', function () {
+    const lib = cv.io.iobroker.SocketLibrary;
+
+    expect(lib.getOrigin('ws://host:8082/')).toEqual('http://host:8082');
+    expect(lib.getOrigin('wss://host/')).toEqual('https://host');
+    expect(lib.getOrigin(new URL('ws://host:8084/'))).toEqual('http://host:8084');
+  });
+
+  it('loads the library of the backend it connects to', async function () {
+    const client = newClient('ws://other:8084/');
+    await client.login(false, {});
+
+    expect(cv.io.iobroker.SocketLibrary.load).toHaveBeenCalled();
+    expect('' + cv.io.iobroker.SocketLibrary.load.calls.mostRecent().args[0]).toContain('other:8084');
     client.terminate();
   });
 
-  it('reports connected only after the ready message and calls the callback', function () {
+  it('connects with an http url and without the query of the backend url', async function () {
+    // socket.io-client expects http(s), the @iobroker/ws client turns it into ws itself
+    const client = newClient('ws://localhost:8083/?token=abc');
+    await client.login(false, {});
+
+    expect(lastSocket().url).toEqual('http://localhost:8083/');
+    client.terminate();
+  });
+
+  it('puts the url-encoded credentials into the connection url', async function () {
+    const client = newClient();
+    await client.login(false, { username: 'a b', password: 'p&q' });
+    const url = lastSocket().url;
+
+    expect(url).toContain(`user=${encodeURIComponent('a b')}`); // a%20b
+    expect(url).toContain(`pass=${encodeURIComponent('p&q')}`); // p%26q
+    client.terminate();
+  });
+
+  it('reports connected only after the connect event and calls the callback', async function () {
     const client = newClient();
     const ready = jasmine.createSpy('ready');
-    client.login(false, {}, ready);
+    await client.login(false, {}, ready);
     const sock = lastSocket();
-    sock.open();
+
     expect(client.isConnected()).toBe(false);
-    sock.receive([0, null, '___ready___', null]);
+    sock.ready();
+
     expect(client.isConnected()).toBe(true);
     expect(ready).toHaveBeenCalled();
     client.terminate();
   });
 
-  it('routes a stateChange message to update()', function () {
-    const client = newClient();
+  it('routes a stateChange to update()', async function () {
+    const { client, sock } = await connectedClient();
     client.update = jasmine.createSpy('update');
-    client.login(false, {});
-    const sock = lastSocket();
-    sock.open();
-    sock.receive([0, null, '___ready___', null]);
-    sock.receive([0, 5, 'stateChange', ['ebus.0.foo', { val: 21.5, ts: 100, lc: 100 }]]);
+    sock.fire('stateChange', 'ebus.0.foo', { val: 21.5, ts: 100, lc: 100 });
+
     expect(client.update).toHaveBeenCalledWith({ 'ebus.0.foo': 21.5 });
     client.terminate();
   });
 
-  it('answers an engine.io ping with a pong', function () {
-    const client = newClient();
-    client.login(false, {});
-    const sock = lastSocket();
-    sock.open();
-    sock.receive([1]); // PING
-    expect(sock.sent).toContain(JSON.stringify([2])); // PONG
+  it('ignores a stateChange that did not change the value', async function () {
+    const { client, sock } = await connectedClient();
+    client.update = jasmine.createSpy('update');
+    // ts differs from lc, so only the timestamp was refreshed
+    sock.fire('stateChange', 'ebus.0.foo', { val: 21.5, ts: 200, lc: 100 });
+
+    expect(client.update).not.toHaveBeenCalled();
     client.terminate();
   });
 
-  it('getHistory rejects when the socket is not open', async function () {
+  it('subscribes again after a reconnect', async function () {
+    const { client, sock } = await connectedClient();
+    client.subscribe(['ebus.0.foo']);
+    sock.emitted.length = 0;
+    sock.fire('reconnect');
+
+    expect(sock.lastCall('subscribeStates')).not.toBeNull();
+    expect(sock.lastCall('subscribeStates').args[0]).toEqual(['ebus.0.foo']);
+    client.terminate();
+  });
+
+  it('getHistory rejects when there is no connection', async function () {
     const client = newClient();
-    client.login(false, {}); // socket stays CONNECTING, no ready
+    await client.login(false, {}); // no connect event, so not connected
     let error;
     try {
       await client.getHistory('ebus.0.foo', new Date(1000), new Date(2000), {});
     } catch (e) {
       error = e;
     }
+
     expect(error).toBeDefined();
     expect('' + error).toContain('not connected');
     client.terminate();
   });
 
   it('sends a getHistory request and resolves with the response', async function () {
-    const client = newClient();
-    client.login(false, {});
-    const sock = lastSocket();
-    sock.open();
-    sock.receive([0, null, '___ready___', null]);
-
+    const { client, sock } = await connectedClient();
     const promise = client.getHistory('ebus.0.foo', new Date(1000), new Date(2000), { aggregate: 'minmax' });
+    const call = sock.lastCall('getHistory');
 
-    const frame = JSON.parse(sock.sent[sock.sent.length - 1]);
-    expect(frame[2]).toEqual('getHistory');
-    expect(frame[3][0]).toEqual('ebus.0.foo');
-    const requestId = frame[1];
+    expect(call.args[0]).toEqual('ebus.0.foo');
+    expect(call.args[1].aggregate).toEqual('minmax');
 
     const history = [{ ts: 1000, val: 1 }];
-    sock.receive([3, requestId, null, [null, history]]);
+    sock.answer('getHistory', null, history);
 
-    const result = await promise;
-    expect(result).toEqual(history);
+    expect(await promise).toEqual(history);
     client.terminate();
   });
 
-  it('stops reconnecting after the server asks to reauthenticate', function () {
-    const client = newClient();
-    client.login(false, { username: 'x', password: 'wrong' });
-    const sock = lastSocket();
-    sock.open();
-    sock.receive([0, null, 'reauthenticate', null]);
-    // a close now must not trigger a reconnect (no new socket is created)
-    sock.serverClose();
-    expect(sockets.length).toBe(1);
-    client.terminate();
-  });
+  it('rejects a pending request when the connection goes away', async function () {
+    const { client, sock } = await connectedClient();
+    const promise = client.getHistory('ebus.0.foo', new Date(1000), new Date(2000), {});
+    sock.connected = false;
+    sock.fire('disconnect');
 
-  describe('ping keepalive (socket.io compatibility path)', function () {
-    beforeEach(function () {
-      jasmine.clock().install();
-    });
-    afterEach(function () {
-      jasmine.clock().uninstall();
-    });
-
-    function setup(pingInterval) {
-      const client = newClient();
-      client.login(false, {});
-      const sock = lastSocket();
-      sock.open();
-      // the ___setup___ message carries the ping interval the socket.io backend asks for
-      sock.receive([0, null, '___setup___', { pingInterval: pingInterval }]);
-      sock.sent.length = 0;
-      return { client, sock };
+    let error;
+    try {
+      await promise;
+    } catch (e) {
+      error = e;
     }
 
-    it('clamps a too-small ping interval up to the engine.io default', function () {
-      const { client, sock } = setup(5); // absurdly small
-      jasmine.clock().tick(24999);
-      expect(sock.sent).not.toContain('2');
-      jasmine.clock().tick(2);
-      expect(sock.sent).toContain('2'); // fired at ~25000, not 5
-      client.terminate();
-    });
+    expect('' + error).toContain('closed');
+    client.terminate();
+  });
 
-    it('honours a ping interval within the sane range', function () {
-      const { client, sock } = setup(5000);
-      jasmine.clock().tick(4999);
-      expect(sock.sent).not.toContain('2');
-      jasmine.clock().tick(2);
-      expect(sock.sent).toContain('2');
-      client.terminate();
-    });
+  it('gives up after the server asks to reauthenticate', async function () {
+    const { client, sock } = await connectedClient({ username: 'x', password: 'wrong' });
+    sock.fire('reauthenticate');
+
+    expect(sock.destroyed).toBe(true);
+    // no second connection is opened
+    expect(sockets.length).toBe(1);
+    client.terminate();
   });
 });

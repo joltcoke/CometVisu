@@ -65,10 +65,13 @@ der über WebSocket ansprechbar ist.
 ioBroker
 ~~~~~~~~
 
-Die Installation des "Web socket" Adapters (``iobroker.ws``, mindestens Version
-5.0.2) in ioBroker ist nötig. Dieser Adapter wird für den Datenaustausch
-verwendet. Für die Anzeige von Diagrammen bzw. Verlaufsdaten wird zusätzlich der
-SQL-Adapter (``iobroker.sql``, mindestens Version 4.1.1) benötigt.
+Für den Datenaustausch wird ein ioBroker-Server mit Websocket-Schnittstelle
+benötigt: entweder der Web-Adapter (``iobroker.web``) oder der "Web socket"
+Adapter (``iobroker.ws``, mindestens Version 5.0.2). Die CometVisu lädt die
+passende Programmbibliothek von diesem Server, es spielt daher keine Rolle,
+welches Protokoll er dafür verwendet. Für die Anzeige von Diagrammen bzw.
+Verlaufsdaten wird zusätzlich der SQL-Adapter (``iobroker.sql``, mindestens
+Version 4.1.1) benötigt.
 
 Backend konfigurieren
 ~~~~~~~~~~~~~~~~~~~~~
@@ -127,7 +130,7 @@ Attribut             Bedeutung
 backend              Name wie ``knxd``, ``openhab`` oder ``mqtt``
 backend-knxd-url     URL für die knxd Login-Ressource
 backend-mqtt-url     URL für die MQTT Login-Ressource
-backend-iobroker-url URL für die ioBroker Login-Ressource
+backend-iobroker-url URL für die ioBroker websocket API
 backend-openhab-url  openHAB: Pfad zur REST-API
 backend-url          Veraltet: URL für die openHAB Verbindung
 username             Veraltet: Benutzername, wenn für openHAB benötigt

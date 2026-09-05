@@ -47,14 +47,9 @@ qx.Class.define('cv.io.iobroker.Client', {
   members: {
     _type: null,
     __subscribedAddresses: null,
-    __nextMessageId: 0,
     __connection: null,
     __pendingRequests: null,
     __credentials: null,
-    __pingTimer: null,
-    __pureWebsocket: true,
-    __reconnectTimer: null,
-    __reconnectAttempt: 0,
     __terminated: false,
 
     /**
@@ -205,89 +200,76 @@ qx.Class.define('cv.io.iobroker.Client', {
     },
 
     /**
-     * Whether the underlying socket exists and is ready to send. WebSocket.send() throws an
-     * InvalidStateError when the socket is not OPEN (on Safari also while it is CLOSING or
-     * CLOSED, not only CONNECTING), so every send has to be guarded by this.
+     * Whether there is a connection that can carry a message right now. The library queues
+     * what is sent while it is reconnecting, but a request would then wait for an answer that
+     * only the lost connection could have given.
      * @return {Boolean}
      */
     __isSocketOpen() {
-      return !!this.__connection && this.__connection.readyState === window.WebSocket.OPEN;
+      return !!this.__connection && this.__connection.connected === true;
     },
 
+    /**
+     * Send a message without expecting an answer.
+     * @param name {String} name of the ioBroker socket command
+     * @param args {Array} arguments of that command
+     */
     __sendMessage(name, ...args) {
       if (!this.__isSocketOpen()) {
-        // sending on a socket that is not OPEN would throw; drop the message instead, the
-        // caller state (e.g. subscriptions) is re-established on the next '___ready___'
+        // the caller state (e.g. subscriptions) is re-established on the next 'connect'
         this.debug('not sending "' + name + '", socket is not open');
         return;
       }
-      if (this.__pureWebsocket) {
-        this.__connection.send(JSON.stringify([3, this.__nextMessageId++, name, [...args]]));
-      } else {
-        this.__connection.send('42' + JSON.stringify([name, ...args, null]));
-      }
+      this.__connection.emit(name, ...args);
     },
 
+    /**
+     * Send a message and wait for the answer of the backend.
+     *
+     * The library correlates request and answer, the pending promises are only tracked to be
+     * able to settle them when the connection goes away - the answer could only have come over
+     * the connection that is gone.
+     *
+     * @param name {String} name of the ioBroker socket command
+     * @param args {Array} arguments of that command
+     * @return {Promise<Array>} the arguments the backend passed to its callback
+     */
     __sendMessageResponse(name, ...args) {
       return new Promise((resolve, reject) => {
         if (!this.__isSocketOpen()) {
-          // sending now would throw an InvalidStateError; reject with the same message the
-          // connection guards use, so the caller can treat it as a transient disconnect
           reject(new Error('not connected to ' + this._backendUrl));
           return;
         }
 
-        let request = {
-          id: this.__nextMessageId++,
-          resolve: resolve,
-          reject: reject
-        };
-
+        const request = { resolve: resolve, reject: reject };
         this.__pendingRequests.push(request);
 
-        if (this.__pureWebsocket) {
-          this.__connection.send(JSON.stringify([3, request.id, name, [...args]]));
-        } else {
-          this.__connection.send('42' + request.id + JSON.stringify([name, ...args]));
-        }
+        /**
+         * Hand the callback arguments of the backend to the caller.
+         * @param response {Array} arguments of the ioBroker callback, e.g. (error, result)
+         */
+        const answer = (...response) => {
+          const idx = this.__pendingRequests.indexOf(request);
+          if (idx < 0) {
+            // already settled by a lost connection
+            return;
+          }
+          this.__pendingRequests.splice(idx, 1);
+          resolve(response);
+        };
+
+        this.__connection.emit(name, ...args, answer);
       });
     },
 
-    __decodeMessage(msg) {
-      if (this.__pureWebsocket) {
-        return JSON.parse(msg);
-      }
-
-      const result = msg.match(/^(?<etype>\d)(?<stype>\d)?(?<id>\d+)?(?<payload>.*)/);
-
-      switch (result.groups.etype) {
-        case '0': /* OPEN */
-          return [0, null, '___setup___', JSON.parse(result.groups.payload)];
-        case '3': /* PONG */
-          return [undefined];
-        case '4': /* MESSAGE */
-          switch (result.groups.stype) {
-            case '0':
-              return [0, 0, '___ready___'];
-            case '2':
-            {
-              const [name, ...payload] = JSON.parse(result.groups.payload);
-
-              return [0, null, name, payload];
-            }
-            case '3':
-              return [3, Number(result.groups.id), null, JSON.parse(result.groups.payload)];
-            default:
-              this.debug('Unknown socket.io type:', result.groups.stype);
-              return [undefined];
-          }
-        default:
-          this.debug('Unknown engine.io type:', result.groups.etype);
-          return [undefined];
-      }
-    },
-
-    __initiateConnection(callback = null, context = null) {
+    /**
+     * Open the connection to the backend, using the socket client library that the backend
+     * itself publishes.
+     *
+     * @param callback {Function?} called once the connection is ready
+     * @param context {Object?} context for the callback
+     */
+    async __initiateConnection(callback = null, context = null) {
       if (this.__connection) {
         // never leave a second socket behind, its close handler would reject the
         // pending requests of the new one
@@ -315,147 +297,123 @@ qx.Class.define('cv.io.iobroker.Client', {
         );
       };
 
+      let io;
       try {
-        // build the structural parameters with URLSearchParams, keeping whatever the
-        // backend url already carries
-        const query = new window.URLSearchParams(this._backendUrl.search);
-        let path = '';
+        io = await cv.io.iobroker.SocketLibrary.load(this._backendUrl);
+      } catch (error) {
+        onFailure({
+          errorMessage: error.message || error.toString(),
+          errorCode: 'login -> ' + cv.io.iobroker.SocketLibrary.getOrigin(this._backendUrl) + '/socket.io.js'
+        });
 
-        if (this.__pureWebsocket) {
-          query.set('sid', Date.now());
-          path += '/';
-        } else {
-          query.set('transport', 'websocket');
-          path += '/socket.io/';
-        }
+        return;
+      }
 
-        let queryString = query.toString();
+      if (this.__terminated) {
+        // terminate() was called while the library was still loading
+        return;
+      }
 
-        // Append user and pass url-encoded, so credentials containing any character
-        // (& = # % + or whitespace) survive the query transport. The ioBroker ws
-        // authentication gate (getQuery() in @iobroker/socket-classes passportSocket.js,
-        // run during the upgrade) decodes each value with decodeURIComponent, so the
-        // encoded credential is compared against its decoded, original value.
-        const credentials = this.__credentials || {};
-        if (credentials.username) {
-          queryString += `&user=${encodeURIComponent(credentials.username)}`;
-        }
-        if (credentials.password) {
-          queryString += `&pass=${encodeURIComponent(credentials.password)}`;
-        }
-
-        this.__connection = new window.WebSocket(
-          `${this._backendUrl.protocol}//${this._backendUrl.host}${path}?${queryString}`
-        );
-        const socket = this.__connection;
-
-        socket.onerror = event => {
-          this.debug('SOCK ERROR', event);
-        };
-        socket.onclose = event => {
-          this.debug('SOCK CLOSE', event);
-          if (this.__connection !== socket) {
-            // a previous socket that has already been replaced, it must not touch
-            // the connection that took its place
-            return;
-          }
-
-          this.__closeConnection(false);
-
-          if (!this.__terminated) {
-            // the connection was not closed by us, get it back
-            this.__scheduleReconnect();
-          }
-        };
-        socket.onmessage = async event => {
-          const [type, id, name, args] = this.__decodeMessage(event.data);
-
-          if (type === undefined) {
-            return;
-          }
-
-          switch (type) {
-            case 0: /* MESSAGE */
-              switch (name) {
-                case '___ready___':
-                  this.__cancelReconnect();
-                  this.setConnected(true);
-
-                  // the server subscriptions belong to the connection that just went away, so
-                  // everything known so far has to be subscribed again. On the very first
-                  // connect there is nothing yet and __subscribeStates() returns immediately.
-                  this.__subscribeStates();
-
-                  if (callback) {
-                    callback.call(context);
-                  }
-                  break;
-                case '___setup___': /* Fake for socket.io compatibility */
-                  {
-                    // honour the ping interval the socket.io backend sent, but only within a sane
-                    // range, so a malicious or broken server cannot turn this keepalive into a
-                    // busy loop
-                    let pingInterval = 25000; // engine.io default
-                    const requested = Number(args.pingInterval);
-                    if (requested >= 1000 && requested <= 300000) {
-                      pingInterval = requested;
-                    }
-                    this.__pingTimer = setInterval(() => {
-                      this.__connection.send('2');
-                    }, pingInterval);
-                  }
-                  break;
-                case 'reauthenticate':
-                  // Credentials were rejected. Do not reconnect: ioBroker locks an
-                  // account out for up to an hour after a few failed attempts, so
-                  // retrying with the same (wrong) credentials would only make things
-                  // worse and could lock out the correct ones. Stop and report; the
-                  // user fixes the credentials and reloads.
-                  this.__terminated = true;
-                  this.__cancelReconnect();
-                  onFailure({
-                    errorMessage: 'Authentication failed!',
-                    errorCode: 'login -> WebSocket(' + this._backendUrl + ')'
-                  });
-                  break;
-                case 'stateChange':
-                  if (args[1].ts === args[1].lc) {
-                    this.update({ [args[0]]: args[1].val }); 
-                  }
-                  break;
-                default:
-                  this.debug('Unknown message name:', name);
-                  break;
-              }
-              break;
-            case 1: /* PING */
-              this.__connection.send(JSON.stringify([2]));
-              break;
-            case 3: /* CALLBACK */
-            {
-              const requestIdx = this.__pendingRequests.findIndex(entry => entry.id === id);
-
-              if (requestIdx < 0) {
-                break; 
-              }
-
-              const request = this.__pendingRequests[requestIdx];
-
-              this.__pendingRequests.splice(requestIdx, 1);
-              request.resolve(args);
-              break;
-            }
-            default:
-              this.debug('UNKNOWN SOCK MSG', event, type, id, name, args);
-              break;
-          }
-        };
+      let socket;
+      try {
+        socket = io.connect(this.__connectionUrl(), { name: 'CometVisu' });
       } catch (error) {
         onFailure({
           errorMessage: error.toString(),
-          errorCode: 'login -> WebSocket(' + this._backendUrl + ')'
+          errorCode: 'login -> ' + this._backendUrl
         });
+
+        return;
       }
+      this.__connection = socket;
+
+      /**
+       * Everything the backend knows about was subscribed on the connection that was lost, so
+       * it all has to be subscribed again. On the very first connect there is nothing yet.
+       */
+      const ready = () => {
+        if (this.__connection !== socket) {
+          return;
+        }
+        this.setConnected(true);
+        this.__subscribeStates();
+
+        if (callback) {
+          callback.call(context);
+          callback = null;
+        }
+      };
+
+      socket.on('connect', ready);
+      socket.on('reconnect', ready);
+
+      socket.on('disconnect', () => {
+        if (this.__connection !== socket) {
+          // a previous socket that has already been replaced, it must not touch
+          // the connection that took its place
+          return;
+        }
+        // the library reconnects on its own, only the local state has to follow
+        this.setConnected(false);
+        this.__rejectPendingRequests('connection to ' + this._backendUrl + ' closed');
+      });
+
+      socket.on('error', error => {
+        this.debug('SOCK ERROR', error);
+      });
+
+      socket.on('reauthenticate', () => {
+        // The server rejected us. Do not reconnect: ioBroker locks an account out for up to an
+        // hour after a few failed attempts. When the visualisation is served by that very
+        // server, its login page can take over; otherwise report and stop.
+        this.__terminated = true;
+        this.__closeQuietly();
+
+        const origin = cv.io.iobroker.SocketLibrary.getOrigin(this._backendUrl);
+        if (origin === window.location.origin) {
+          window.location.href =
+            origin + '/login/index.html?href=' + encodeURI(window.location.href.replace(window.location.origin, ''));
+
+          return;
+        }
+
+        onFailure({
+          errorMessage: 'Authentication failed!',
+          errorCode: 'login -> ' + this._backendUrl
+        });
+      });
+
+      socket.on('stateChange', (id, state) => {
+        if (state && state.ts === state.lc) {
+          this.update({ [id]: state.val });
+        }
+      });
+    },
+
+    /**
+     * The url to hand to the socket client library.
+     *
+     * It is http(s), not ws(s): socket.io-client expects it that way, and the @iobroker/ws client
+     * turns it into ws(s) itself. Only the credentials are added to the query, the connection needs
+     * nothing else from the backend url.
+     *
+     * @return {String}
+     */
+    __connectionUrl() {
+      const url = cv.io.iobroker.SocketLibrary.getOrigin(this._backendUrl) + this._backendUrl.pathname;
+      const credentials = this.__credentials || {};
+      const query = [];
+
+      // url-encoded, so credentials containing any character (& = # % + or whitespace) survive the
+      // query transport - the ioBroker authentication gate reads them with decodeURIComponent()
+      if (credentials.username) {
+        query.push(`user=${encodeURIComponent(credentials.username)}`);
+      }
+      if (credentials.password) {
+        query.push(`pass=${encodeURIComponent(credentials.password)}`);
+      }
+
+      return query.length ? `${url}?${query.join('&')}` : url;
     },
 
     /**
@@ -472,15 +430,15 @@ qx.Class.define('cv.io.iobroker.Client', {
       }
     },
 
+    /**
+     * Drop the connection and everything that was waiting on it.
+     * @param closeConnection {Boolean?} whether the socket itself still has to be closed
+     */
     __closeConnection(closeConnection = true) {
-      if (this.isConnected()) {
-        if (this.__pingTimer) {
-          clearInterval(this.__pingTimer);
-          this.__pingTimer = null;
-        }
-
+      if (this.__connection) {
         if (closeConnection) {
-          this.__connection.close();
+          // destroy() also stops the reconnect the library would otherwise start
+          this.__connection.destroy();
         }
 
         this.setConnected(false);
@@ -536,7 +494,7 @@ qx.Class.define('cv.io.iobroker.Client', {
      */
     async login(loginOnly, credentials, callback, context) {
       this.__credentials = credentials;
-      this.__initiateConnection(callback, context);
+      await this.__initiateConnection(callback, context);
     },
 
     /**
@@ -606,75 +564,27 @@ qx.Class.define('cv.io.iobroker.Client', {
     getLastError() {},
 
     /**
-     * Restart the connection
-     * @param full
-     */
-    /**
      * Re-establish the connection. Every reconnect is a full one, the server side
      * subscriptions belong to the connection that was lost and are renewed as soon as
      * the new one is ready.
      * @param full {Boolean?} unused, kept for the cv.io.IClient signature
      */
     restart(full) {
-      this.__cancelReconnect();
       this.__closeQuietly();
-      this.__reconnect();
-    },
-
-    /**
-     * Try to connect, as long as the application is active. While it is inactive the
-     * connections are closed on purpose, reconnecting then would just fight that.
-     */
-    __reconnect() {
-      this.__reconnectTimer = null;
-
-      if (this.isConnected()) {
-        return;
-      }
-
-      const app = qx.core.Init.getApplication();
-      if (app && !app.isActive()) {
-        this.debug('application is inactive, not reconnecting');
-
-        return;
-      }
-
-      this.__reconnectAttempt++;
-      this.debug('connection attempt ' + this.__reconnectAttempt);
       this.__initiateConnection();
-      // the attempt is asynchronous, schedule the next one in case it does not succeed
-      this.__scheduleReconnect();
     },
 
     /**
-     * Schedule the next connection attempt, backing off from 1s up to 60s.
-     */
-    __scheduleReconnect() {
-      if (this.__reconnectTimer || this.__terminated) {
-        return;
-      }
-
-      const delay = Math.min(1000 * Math.pow(2, this.__reconnectAttempt), 60000);
-      this.debug('next connection attempt in ' + delay / 1000 + 's');
-      this.__reconnectTimer = setTimeout(() => this.__reconnect(), delay);
-    },
-
-    __cancelReconnect() {
-      if (this.__reconnectTimer) {
-        clearTimeout(this.__reconnectTimer);
-        this.__reconnectTimer = null;
-      }
-      this.__reconnectAttempt = 0;
-    },
-
-    /**
-     * Close the connection without letting the close handler schedule a reconnect.
+     * Close the connection without the handlers of the old socket touching the new one.
      */
     __closeQuietly() {
-      const wasTerminated = this.__terminated;
-      this.__terminated = true;
-      this.__closeConnection();
-      this.__terminated = wasTerminated;
+      const socket = this.__connection;
+      this.__connection = null;
+      if (socket) {
+        socket.destroy();
+      }
+      this.setConnected(false);
+      this.__rejectPendingRequests('connection to ' + this._backendUrl + ' closed');
     },
 
     /**
@@ -701,7 +611,6 @@ qx.Class.define('cv.io.iobroker.Client', {
 
     terminate() {
       this.__terminated = true;
-      this.__cancelReconnect();
       this.__closeConnection();
     },
 
