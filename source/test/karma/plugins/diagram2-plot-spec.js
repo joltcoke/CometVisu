@@ -397,6 +397,196 @@ describe('testing the plot of the diagram2 plugin', function () {
     expect(Math.round(svg().getBoundingClientRect().width)).toBe(400);
   });
 
+  /** a real mouse event, the way d3-zoom expects it: on the svg to start, on the window to follow */
+  const mouse = function (type, x, y, target) {
+    (target || window).dispatchEvent(
+      new MouseEvent(type, { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y })
+    );
+  };
+
+  /** milliseconds one pixel of the time axis covers */
+  const perPixel = function () {
+    return plot._layout.x.invert(1).getTime() - plot._layout.x.invert(0).getTime();
+  };
+
+  it('should pan the time range while dragging', function () {
+    draw({ axes: [axis(' °C')], interactive: true });
+
+    const box = svg().getBoundingClientRect();
+    const before = plot._layout.x.domain().map(date => date.getTime());
+    const step = perPixel();
+    const ranges = [];
+    plot.addListener('rangeChanged', event => ranges.push(event.getData()));
+
+    mouse('mousedown', box.left + 300, box.top + 150, svg());
+    mouse('mousemove', box.left + 200, box.top + 150);
+    mouse('mouseup', box.left + 200, box.top + 150);
+
+    const view = plot.getView();
+    // dragging to the left shows later values, the width of the window stays
+    expect(view).not.toBeNull();
+    expect(Math.round((view[0] - before[0]) / step)).toBe(100);
+    expect(view[1] - view[0]).toBe(before[1] - before[0]);
+
+    // the widget hears about it once, when the gesture ends
+    expect(ranges.length).toBe(1);
+    expect(ranges[0]).toEqual(view);
+  });
+
+  it('should zoom around the pointer with the wheel', function (done) {
+    draw({ axes: [axis(' °C')], interactive: true });
+
+    const box = svg().getBoundingClientRect();
+    const before = plot._layout.x.domain().map(date => date.getTime());
+    const under = plot._layout.x.invert(200).getTime();
+    const ranges = [];
+    plot.addListener('rangeChanged', event => ranges.push(event.getData()));
+
+    svg().dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: box.left + 200,
+        clientY: box.top + 150,
+        deltaY: -100
+      })
+    );
+
+    const view = plot.getView();
+    expect(view[1] - view[0]).toBeLessThan(before[1] - before[0]);
+    // the value under the pointer stays where it is, less than a pixel away
+    expect(Math.abs(plot._layout.x.invert(200).getTime() - under) / perPixel()).toBeLessThan(1);
+
+    // d3 reports the end of a wheel gesture after a moment of quiet
+    setTimeout(function () {
+      expect(ranges.length).toBe(1);
+      expect(ranges[0]).toEqual(view);
+      done();
+    }, 300);
+  });
+
+  it('should zoom by the flot amount around the double clicked point', function () {
+    draw({ axes: [axis(' °C')], interactive: true });
+
+    const box = svg().getBoundingClientRect();
+    const before = plot._layout.x.domain().map(date => date.getTime());
+    const under = plot._layout.x.invert(200).getTime();
+
+    svg().dispatchEvent(
+      new MouseEvent('dblclick', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: box.left + 200,
+        clientY: box.top + 150
+      })
+    );
+
+    const view = plot.getView();
+    // flot zooms by 1.5 on a double click, d3 would use 2
+    expect((before[1] - before[0]) / (view[1] - view[0])).toBeCloseTo(cv.plugins.diagram2.Plot.ZOOM_AMOUNT, 3);
+    expect(Math.abs(plot._layout.x.invert(200).getTime() - under) / perPixel()).toBeLessThan(1);
+  });
+
+  it('should only move the value axis when zooming it is allowed', function () {
+    draw({ axes: [axis(' °C')], interactive: true });
+
+    const box = svg().getBoundingClientRect();
+    const domain = plot._layout.axes[0].scale.domain();
+
+    mouse('mousedown', box.left + 300, box.top + 100, svg());
+    mouse('mousemove', box.left + 300, box.top + 160);
+    mouse('mouseup', box.left + 300, box.top + 160);
+
+    expect(plot._yViews).toBeNull();
+    expect(plot._layout.axes[0].scale.domain()).toEqual(domain);
+
+    plot.shutdown();
+    plot.dispose();
+    element.remove();
+    plot = null;
+    element = null;
+
+    draw({ axes: [axis(' °C')], interactive: true, zoomYAxis: true });
+    const second = svg().getBoundingClientRect();
+    const before = plot._layout.axes[0].scale.domain();
+
+    mouse('mousedown', second.left + 300, second.top + 100, svg());
+    mouse('mousemove', second.left + 300, second.top + 160);
+    mouse('mouseup', second.left + 300, second.top + 160);
+
+    const after = plot._layout.axes[0].scale.domain();
+    // dragging down shows smaller values, the height of the window stays
+    expect(after[0]).toBeLessThan(before[0]);
+    expect(after[1] - after[0]).toBeCloseTo(before[1] - before[0], 6);
+  });
+
+  it('should keep panning while the diagram redraws itself', function () {
+    draw({ axes: [axis(' °C')], interactive: true });
+
+    const box = svg().getBoundingClientRect();
+    mouse('mousedown', box.left + 300, box.top + 150, svg());
+    mouse('mousemove', box.left + 250, box.top + 150);
+    const middle = plot.getView();
+
+    // every redraw throws the drawn content away - the gesture has to survive that, otherwise it
+    // dies on the first move on iOS, where the events follow the element the finger started on
+    plot.draw();
+    expect(svg().querySelector('rect.capture')).not.toBeNull();
+
+    mouse('mousemove', box.left + 200, box.top + 150);
+    mouse('mouseup', box.left + 200, box.top + 150);
+
+    const view = plot.getView();
+    expect(view[0]).toBeGreaterThan(middle[0]);
+    expect(Math.round((view[0] - middle[0]) / perPixel())).toBe(50);
+  });
+
+  it('should zoom between two fingers', function () {
+    // d3 only listens for touches when the browser claims to have a touch screen, which the
+    // headless browser running these tests does not
+    const points = navigator.maxTouchPoints;
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
+
+    try {
+      draw({ axes: [axis(' °C')], interactive: true });
+
+      const box = svg().getBoundingClientRect();
+      const before = plot._layout.x.domain().map(date => date.getTime());
+      const middle = plot._layout.x.invert(250).getTime();
+      // the identifier has to stay with the finger, d3 matches the touches of a move by it
+      const touch = function (id, x) {
+        return new Touch({ identifier: id, target: svg(), clientX: box.left + x, clientY: box.top + 150 });
+      };
+      const fingers = function (type, first, second) {
+        const list = [touch(0, first), touch(1, second)];
+        svg().dispatchEvent(
+          new TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            touches: type === 'touchend' ? [] : list,
+            targetTouches: type === 'touchend' ? [] : list,
+            changedTouches: list
+          })
+        );
+      };
+
+      // spreading the fingers from 100 to 200 pixels apart halves the visible range
+      fingers('touchstart', 200, 300);
+      fingers('touchmove', 150, 350);
+      fingers('touchend', 150, 350);
+
+      const view = plot.getView();
+      expect((before[1] - before[0]) / (view[1] - view[0])).toBeCloseTo(2, 1);
+      // the moment stays between the fingers
+      expect(Math.abs(plot._layout.x.invert(250).getTime() - middle) / perPixel()).toBeLessThan(2);
+    } finally {
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: points, configurable: true });
+    }
+  });
+
   it('should draw nothing while the container has no size', function () {
     element = document.createElement('div');
     element.style.width = '0px';

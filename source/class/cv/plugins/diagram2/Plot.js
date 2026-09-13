@@ -367,7 +367,9 @@ qx.Class.define('cv.plugins.diagram2.Plot', {
       this._svg.on('dblclick.zoom', null);
       this._svg.on('dblclick', event => {
         event.preventDefault();
-        behaviour.scaleBy(this._svg, cv.plugins.diagram2.Plot.ZOOM_AMOUNT, d3.pointer(event, node));
+        // the event has to travel along, otherwise the zoom listener has no pointer to
+        // zoom around and would fall back to the middle of the diagram
+        behaviour.scaleBy(this._svg, cv.plugins.diagram2.Plot.ZOOM_AMOUNT, d3.pointer(event, node), event);
       });
     },
 
