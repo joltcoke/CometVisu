@@ -109,6 +109,7 @@
     "d3-time": "^3.1.0",
     "d3-time-format": "^4.1.0",
     "d3-transition": "^3.0.1", 
+    "d3-zoom": "^3.0.0",
     "monaco-editor": "^0.55.1",
     "oauth-pkce": "^0.0.7"
   },
